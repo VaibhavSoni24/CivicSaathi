@@ -1,0 +1,12 @@
+Django>=4.2
+djangorestframework>=3.14
+Faker>=19.0
+django-jazzmin
+psycopg[binary]
+Pillow
+django-cors-headers
+transformers
+torch
+torchvision
+pillow
+python-dotenv>=1.0.0
