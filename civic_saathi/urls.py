@@ -10,8 +10,8 @@ urlpatterns = [
     
     # Complaints - Citizen
     path('complaints/create/', views_api.ComplaintCreateView.as_view(), name='complaint_create'),
-    path('complaints/my/', views_api.MyComplaintsView.as_view(), name='my_complaints'),
     path('complaints/all/', views_api.AllComplaintsView.as_view(), name='all_complaints'),
+    path('complaints/my/', views_api.MyComplaintsView.as_view(), name='my_complaints'),
     path('complaints/<int:pk>/', views_api.ComplaintDetailView.as_view(), name='complaint_detail'),
     path('complaints/<int:pk>/upvote/', views_api.upvote_complaint, name='upvote_complaint'),
     path('complaints/<int:pk>/logs/', views_api.complaint_logs, name='complaint_logs'),

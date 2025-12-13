@@ -189,14 +189,22 @@ export default function ComplaintDetail() {
               {complaint.image && (
                 <div className="card" style={styles.section}>
                   <h2 style={styles.sectionTitle}>Image</h2>
-                  <img src={complaint.image} alt="Complaint" style={styles.image} />
+                  <img 
+                    src={complaint.image.startsWith('http') ? complaint.image : `http://localhost:8000${complaint.image}`} 
+                    alt="Complaint" 
+                    style={styles.image} 
+                  />
                 </div>
               )}
 
               {complaint.completion_image && (
                 <div className="card" style={styles.section}>
                   <h2 style={styles.sectionTitle}>Completion Image</h2>
-                  <img src={complaint.completion_image} alt="Completion" style={styles.image} />
+                  <img 
+                    src={complaint.completion_image.startsWith('http') ? complaint.completion_image : `http://localhost:8000${complaint.completion_image}`} 
+                    alt="Completion" 
+                    style={styles.image} 
+                  />
                   {complaint.completion_note && (
                     <p style={styles.completionNote}>{complaint.completion_note}</p>
                   )}
@@ -274,76 +282,75 @@ export default function ComplaintDetail() {
 const styles = {
   container: {
     minHeight: '100vh',
-    backgroundColor: '#f8fafc',
+    backgroundColor: 'var(--bg-primary)',
   },
   loadingContainer: {
     minHeight: '100vh',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f8fafc',
+    backgroundColor: 'var(--bg-primary)',
   },
   main: {
-    paddingTop: '80px',
+    padding: '2rem 0',
   },
   content: {
     maxWidth: '1200px',
     margin: '0 auto',
-    padding: '32px 24px',
+    padding: '0 1.5rem',
   },
   backLink: {
     display: 'inline-flex',
     alignItems: 'center',
-    gap: '8px',
-    color: '#64748b',
+    gap: '0.5rem',
+    color: 'var(--text-secondary)',
     textDecoration: 'none',
-    fontSize: '14px',
+    fontSize: '0.875rem',
     fontWeight: '500',
-    marginBottom: '24px',
+    marginBottom: '1.5rem',
     transition: 'color 0.2s',
   },
   headerCard: {
-    marginBottom: '24px',
+    marginBottom: '1.5rem',
   },
   headerTop: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    gap: '16px',
-    marginBottom: '16px',
+    gap: '1rem',
+    marginBottom: '1rem',
   },
   title: {
-    fontSize: '32px',
+    fontSize: '2rem',
     fontWeight: '700',
-    color: '#1e293b',
     flex: 1,
     lineHeight: '1.3',
   },
   metaRow: {
     display: 'flex',
     flexWrap: 'wrap',
-    gap: '24px',
-    marginBottom: '20px',
-    paddingBottom: '20px',
-    borderBottom: '1px solid #e2e8f0',
+    gap: '1.5rem',
+    marginBottom: '1.25rem',
+    paddingBottom: '1.25rem',
+    borderBottom: '1px solid var(--border-color)',
   },
   metaItem: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
-    fontSize: '14px',
-    color: '#64748b',
+    gap: '0.5rem',
+    fontSize: '0.875rem',
+    color: 'var(--text-secondary)',
   },
   upvoteBtn: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
-    padding: '10px 20px',
-    border: '2px solid #e2e8f0',
-    borderRadius: '8px',
-    background: 'white',
-    color: '#64748b',
-    fontSize: '14px',
+    gap: '0.5rem',
+    padding: '0.625rem 1.25rem',
+    border: '2px solid var(--border-color)',
+    borderRadius: 'var(--radius-md)',
+    background: 'var(--card-bg)',
+    color: 'var(--text-secondary)',
+    fontSize: '0.875rem',
     fontWeight: '600',
     cursor: 'pointer',
     transition: 'all 0.2s',
@@ -373,34 +380,32 @@ const styles = {
     flexDirection: 'column',
   },
   sectionTitle: {
-    fontSize: '18px',
+    fontSize: '1.125rem',
     fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: '16px',
+    marginBottom: '1rem',
   },
   description: {
-    fontSize: '15px',
-    color: '#475569',
+    fontSize: '0.9375rem',
+    color: 'var(--text-primary)',
     lineHeight: '1.7',
   },
   locationInfo: {
     display: 'flex',
-    gap: '12px',
+    gap: '0.75rem',
   },
   locationAddress: {
-    fontSize: '15px',
-    color: '#1e293b',
+    fontSize: '0.9375rem',
     fontWeight: '500',
-    marginBottom: '4px',
+    marginBottom: '0.25rem',
   },
   locationCity: {
-    fontSize: '14px',
-    color: '#64748b',
-    marginBottom: '4px',
+    fontSize: '0.875rem',
+    color: 'var(--text-secondary)',
+    marginBottom: '0.25rem',
   },
   locationCoords: {
-    fontSize: '13px',
-    color: '#94a3b8',
+    fontSize: '0.8125rem',
+    color: 'var(--text-muted)',
     fontFamily: 'monospace',
   },
   image: {
@@ -409,18 +414,18 @@ const styles = {
     marginTop: '8px',
   },
   completionNote: {
-    marginTop: '12px',
-    fontSize: '14px',
-    color: '#64748b',
+    marginTop: '0.75rem',
+    fontSize: '0.875rem',
+    color: 'var(--text-secondary)',
     fontStyle: 'italic',
   },
   warningCard: {
-    borderLeft: '4px solid #ef4444',
+    borderLeft: '4px solid var(--accent-danger)',
   },
   detailsList: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '16px',
+    gap: '1rem',
   },
   detailItem: {
     display: 'flex',
@@ -428,30 +433,29 @@ const styles = {
     alignItems: 'center',
   },
   detailLabel: {
-    fontSize: '14px',
-    color: '#64748b',
+    fontSize: '0.875rem',
+    color: 'var(--text-secondary)',
     fontWeight: '500',
   },
   detailValue: {
-    fontSize: '14px',
-    color: '#1e293b',
+    fontSize: '0.875rem',
     fontWeight: '600',
   },
   logsList: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '16px',
+    gap: '1rem',
   },
   logItem: {
     display: 'flex',
-    gap: '12px',
+    gap: '0.75rem',
     position: 'relative',
   },
   logDot: {
     width: '10px',
     height: '10px',
     borderRadius: '50%',
-    backgroundColor: '#3b82f6',
+    backgroundColor: 'var(--accent-primary)',
     marginTop: '6px',
     flexShrink: 0,
   },
@@ -459,22 +463,21 @@ const styles = {
     flex: 1,
   },
   logAction: {
-    fontSize: '14px',
-    color: '#1e293b',
+    fontSize: '0.875rem',
     fontWeight: '500',
-    marginBottom: '4px',
+    marginBottom: '0.25rem',
   },
   logTime: {
-    fontSize: '12px',
-    color: '#94a3b8',
-    marginBottom: '4px',
+    fontSize: '0.75rem',
+    color: 'var(--text-muted)',
+    marginBottom: '0.25rem',
   },
   logNotes: {
-    fontSize: '13px',
-    color: '#64748b',
-    marginTop: '8px',
-    padding: '8px 12px',
-    backgroundColor: '#f8fafc',
-    borderRadius: '6px',
+    fontSize: '0.8125rem',
+    color: 'var(--text-secondary)',
+    marginTop: '0.5rem',
+    padding: '0.5rem 0.75rem',
+    backgroundColor: 'var(--bg-secondary)',
+    borderRadius: 'var(--radius-sm)',
   },
 };

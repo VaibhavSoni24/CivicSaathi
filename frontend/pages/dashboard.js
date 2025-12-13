@@ -24,10 +24,11 @@ export default function Dashboard() {
     try {
       const [statsResponse, complaintsResponse] = await Promise.all([
         dashboardAPI.getStats(),
-        complaintAPI.getMyComplaints(),
+        complaintAPI.getAllComplaints(),
       ]);
       setStats(statsResponse.data);
-      setRecentComplaints(complaintsResponse.data.slice(0, 5));
+      const data = complaintsResponse.data.results || complaintsResponse.data;
+      setRecentComplaints(Array.isArray(data) ? data.slice(0, 5) : []);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
