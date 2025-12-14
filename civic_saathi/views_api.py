@@ -11,14 +11,14 @@ from datetime import datetime
 
 from .models import (
     CustomUser, Complaint, ComplaintLog, ComplaintVote, ComplaintCategory,
-    Department, SubAdminCategory, Worker, WorkerAttendance, DepartmentAttendance
+    Department, SubAdminCategory, Worker, WorkerAttendance, DepartmentAttendance, Office
 )
 from .serializers import (
     UserSerializer, UserRegistrationSerializer, LoginSerializer,
     ComplaintSerializer, ComplaintCreateSerializer, ComplaintUpdateSerializer,
     ComplaintLogSerializer, ComplaintVoteSerializer, DepartmentSerializer,
     SubAdminCategorySerializer, ComplaintCategorySerializer,
-    WorkerSerializer, WorkerAttendanceSerializer, DepartmentAttendanceSerializer
+    WorkerSerializer, WorkerAttendanceSerializer, DepartmentAttendanceSerializer, OfficeSerializer
 )
 from .filter_system import ComplaintFilterSystem, ComplaintSortingSystem, ComplaintAssignmentSystem
 from .permissions import IsAdmin, IsSubAdmin, IsDepartmentAdmin, IsCitizen
@@ -473,6 +473,26 @@ def get_departments(request):
     """Get all departments"""
     departments = Department.objects.all()
     serializer = DepartmentSerializer(departments, many=True)
+    return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_offices(request):
+    """Get all offices, optionally filtered by department or city"""
+    offices = Office.objects.filter(is_active=True)
+    
+    # Filter by department if provided
+    department_id = request.query_params.get('department')
+    if department_id:
+        offices = offices.filter(department_id=department_id)
+    
+    # Filter by city if provided
+    city = request.query_params.get('city')
+    if city:
+        offices = offices.filter(city__iexact=city)
+    
+    serializer = OfficeSerializer(offices, many=True)
     return Response(serializer.data)
 
 

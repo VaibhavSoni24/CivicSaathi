@@ -3,7 +3,7 @@ from django.contrib.auth import authenticate
 from .models import (
     CustomUser, AdminProfile, SubAdminProfile, DepartmentAdminProfile,
     Department, SubAdminCategory, ComplaintCategory, Complaint, ComplaintLog,
-    ComplaintVote, Worker, WorkerAttendance, DepartmentAttendance
+    ComplaintVote, Worker, WorkerAttendance, DepartmentAttendance, Office
 )
 
 
@@ -68,6 +68,14 @@ class DepartmentSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class OfficeSerializer(serializers.ModelSerializer):
+    department_name = serializers.CharField(source='department.name', read_only=True)
+    
+    class Meta:
+        model = Office
+        fields = '__all__'
+
+
 class SubAdminCategorySerializer(serializers.ModelSerializer):
     departments = DepartmentSerializer(many=True, read_only=True)
     
@@ -98,6 +106,8 @@ class ComplaintSerializer(serializers.ModelSerializer):
     user_username = serializers.CharField(source='user.username', read_only=True)
     category_name = serializers.CharField(source='category.name', read_only=True)
     department_name = serializers.CharField(source='department.name', read_only=True)
+    office_name = serializers.CharField(source='office.name', read_only=True)
+    office_city = serializers.CharField(source='office.city', read_only=True)
     upvote_count = serializers.IntegerField(read_only=True)
     user_has_voted = serializers.SerializerMethodField()
     
