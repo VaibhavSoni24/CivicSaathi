@@ -1,6 +1,6 @@
 from django.contrib import admin
 from .models import (
-    Department, Office, Officer, Worker,
+    Department, Officer, Worker,
     Complaint, ComplaintLog, Assignment
 )
 
@@ -39,16 +39,6 @@ class AssignmentInline(admin.TabularInline):
 class DepartmentAdmin(admin.ModelAdmin):
     list_display = ("name", "description")
     search_fields = ("name",)
-
-
-# -----------------------------
-# Office
-# -----------------------------
-@admin.register(Office)
-class OfficeAdmin(admin.ModelAdmin):
-    list_display = ("name", "department", "city", "state", "is_active")
-    list_filter = ("department", "city", "is_active")
-    search_fields = ("name", "city", "department__name")
 
 
 # -----------------------------

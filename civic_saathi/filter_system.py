@@ -136,41 +136,19 @@ class ComplaintSortingSystem:
 
 class ComplaintAssignmentSystem:
     """
-    Assignment system to assign complaints to workers and offices based on location
+    Assignment system to assign complaints to workers based on location
     """
     
     @staticmethod
     def assign_complaint(complaint, city: str, state: str):
         """
-        Assign complaint to the correct office based on location (city/state)
-        Automatically assigns to the office matching the complaint's city
+        Assign complaint to department based on location (city/state)
+        This marks it ready for department admin to assign to specific worker
         """
         # Update location info
         complaint.city = city
         complaint.state = state
-        
-        # Find matching office for this department and city
-        if complaint.department:
-            from .models import Office
-            
-            # Try to find an office in the same city
-            office = Office.objects.filter(
-                department=complaint.department,
-                city__iexact=city,
-                is_active=True
-            ).first()
-            
-            if office:
-                complaint.office = office
-                complaint.assigned = True
-                complaint.status = 'PENDING'
-                complaint.save()
-                return True
-            else:
-                # No office found for this city, still mark as pending
-                complaint.assigned = False
-                complaint.status = 'PENDING'
-                complaint.save()
-                return False
-        
-        return False
+        complaint.assigned = True
+        complaint.status = 'PENDING'
+        complaint.save()
+        return True

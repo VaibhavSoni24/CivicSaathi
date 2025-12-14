@@ -11,17 +11,28 @@ from datetime import datetime
 
 from .models import (
     CustomUser, Complaint, ComplaintLog, ComplaintVote, ComplaintCategory,
-    Department, SubAdminCategory, Worker, WorkerAttendance, DepartmentAttendance, Office
+    Department, SubAdminCategory, Worker, WorkerAttendance, DepartmentAttendance
 )
 from .serializers import (
     UserSerializer, UserRegistrationSerializer, LoginSerializer,
     ComplaintSerializer, ComplaintCreateSerializer, ComplaintUpdateSerializer,
     ComplaintLogSerializer, ComplaintVoteSerializer, DepartmentSerializer,
     SubAdminCategorySerializer, ComplaintCategorySerializer,
-    WorkerSerializer, WorkerAttendanceSerializer, DepartmentAttendanceSerializer, OfficeSerializer
+    WorkerSerializer, WorkerAttendanceSerializer, DepartmentAttendanceSerializer
 )
 from .filter_system import ComplaintFilterSystem, ComplaintSortingSystem, ComplaintAssignmentSystem
 from .permissions import IsAdmin, IsSubAdmin, IsDepartmentAdmin, IsCitizen
+
+
+# -------------------------
+# Helper Functions
+# -------------------------
+def get_action_user(request):
+    """Get the user for logging actions, handling admin mock users"""
+    if hasattr(request.user, 'is_admin') and request.user.is_admin:
+        # Admin user is a mock object, return None for logging
+        return None
+    return request.user
 
 
 # -------------------------
@@ -276,7 +287,7 @@ def assign_to_worker(request, pk):
     # Log the action
     ComplaintLog.objects.create(
         complaint=complaint,
-        action_by=request.user,
+        action_by=get_action_user(request),
         note=f"Assigned to worker {worker.user.username}",
         old_status=old_status,
         new_status='ASSIGNED',
@@ -316,7 +327,7 @@ def update_complaint_status(request, pk):
     # Log the action
     ComplaintLog.objects.create(
         complaint=complaint,
-        action_by=request.user,
+        action_by=get_action_user(request),
         note=note or f"Status updated to {new_status}",
         old_status=old_status,
         new_status=new_status
@@ -339,7 +350,7 @@ def reject_complaint(request, pk):
     
     ComplaintLog.objects.create(
         complaint=complaint,
-        action_by=request.user,
+        action_by=get_action_user(request),
         note=f"Rejected: {reason}",
         old_status=old_status,
         new_status='REJECTED'
@@ -354,8 +365,11 @@ def delete_complaint(request, pk):
     """Delete unnecessary/wrong complaint (Sub-Admin only)"""
     user = request.user
     
-    # Check if user is sub-admin or admin
-    if user.user_type not in ['ADMIN', 'SUB_ADMIN']:
+    # Check if user is sub-admin or admin (allow admin mock users)
+    if hasattr(user, 'is_admin') and user.is_admin:
+        # Admin mock user, allow access
+        pass
+    elif not hasattr(user, 'user_type') or user.user_type not in ['ADMIN', 'SUB_ADMIN']:
         return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
     
     complaint = get_object_or_404(Complaint, pk=pk)
@@ -364,7 +378,7 @@ def delete_complaint(request, pk):
     
     ComplaintLog.objects.create(
         complaint=complaint,
-        action_by=request.user,
+        action_by=get_action_user(request),
         note="Complaint deleted by admin",
         old_status=complaint.status,
         new_status='DELETED'
@@ -473,26 +487,6 @@ def get_departments(request):
     """Get all departments"""
     departments = Department.objects.all()
     serializer = DepartmentSerializer(departments, many=True)
-    return Response(serializer.data)
-
-
-@api_view(['GET'])
-@permission_classes([AllowAny])
-def get_offices(request):
-    """Get all offices, optionally filtered by department or city"""
-    offices = Office.objects.filter(is_active=True)
-    
-    # Filter by department if provided
-    department_id = request.query_params.get('department')
-    if department_id:
-        offices = offices.filter(department_id=department_id)
-    
-    # Filter by city if provided
-    city = request.query_params.get('city')
-    if city:
-        offices = offices.filter(city__iexact=city)
-    
-    serializer = OfficeSerializer(offices, many=True)
     return Response(serializer.data)
 
 

@@ -19,6 +19,9 @@ class CustomUser(AbstractUser):
     phone = models.CharField(max_length=15, blank=True)
     city = models.CharField(max_length=100, blank=True)
     state = models.CharField(max_length=100, blank=True)
+    
+    class Meta:
+        db_table = 'custom_user'
 
 
 # -------------------------
@@ -104,26 +107,6 @@ class DepartmentAdminProfile(models.Model):
 
 
 # -------------------------
-# Office (Department Offices by Location)
-# -------------------------
-class Office(models.Model):
-    department = models.ForeignKey(Department, on_delete=models.CASCADE, related_name='offices')
-    name = models.CharField(max_length=100)
-    city = models.CharField(max_length=100)
-    state = models.CharField(max_length=100)
-    address = models.TextField(blank=True)
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    
-    class Meta:
-        unique_together = ('department', 'city')
-        ordering = ['city']
-    
-    def __str__(self):
-        return f"{self.department.name} - {self.city} Office"
-
-
-# -------------------------
 # Officers (Dept Admins) - Legacy
 # -------------------------
 class Officer(models.Model):
@@ -197,14 +180,6 @@ class Complaint(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True
-    )
-    
-    office = models.ForeignKey(
-        'Office',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='complaints'
     )
 
     title = models.CharField(max_length=200)

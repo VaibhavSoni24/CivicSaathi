@@ -63,45 +63,46 @@ export const adminComplaintAPI = {
   
   // Verify complaint
   verifyComplaint: (id, data) => 
-    adminApi.post(`/admin/complaints/${id}/verify/`, data),
+    adminApi.post(`/complaints/${id}/verify/`, data),
   
   // Reject complaint
   rejectComplaint: (id, reason) => 
-    adminApi.post(`/admin/complaints/${id}/reject/`, { reason }),
+    adminApi.post(`/complaints/${id}/reject/`, { reason }),
   
   // Assign to worker
   assignToWorker: (id, workerId, notes) => 
-    adminApi.post(`/admin/complaints/${id}/assign/`, { worker_id: workerId, notes }),
+    adminApi.post(`/complaints/${id}/assign/`, { worker_id: workerId, notes }),
   
   // Update status
   updateStatus: (id, status, notes, completionImage = null) => {
     const formData = new FormData();
     formData.append('status', status);
-    if (notes) formData.append('notes', notes);
+    if (notes) formData.append('note', notes);
     if (completionImage) formData.append('completion_image', completionImage);
     
-    return adminApi.post(`/admin/complaints/${id}/update-status/`, formData, {
+    return adminApi.post(`/complaints/${id}/update-status/`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
   
   // Reassign complaint to different department
   reassignDepartment: (id, newDepartmentId, reason) => 
-    adminApi.post(`/admin/complaints/${id}/reassign/`, { 
+    adminApi.post(`/complaints/${id}/reassign/`, { 
       department_id: newDepartmentId, 
       reason 
     }),
   
   // Delete complaint (Sub-Admin and Root Admin only)
   deleteComplaint: (id, reason) => 
-    adminApi.delete(`/admin/complaints/${id}/`, { data: { reason } }),
+    adminApi.delete(`/complaints/${id}/delete/`, { data: { reason } }),
   
   // Mark as completed with photo
   markCompleted: (id, completionImage, notes) => {
     const formData = new FormData();
     formData.append('completion_image', completionImage);
-    formData.append('notes', notes);
-    return adminApi.post(`/admin/complaints/${id}/complete/`, formData, {
+    formData.append('note', notes);
+    formData.append('status', 'COMPLETED');
+    return adminApi.post(`/complaints/${id}/update-status/`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
