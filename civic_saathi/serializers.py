@@ -3,7 +3,7 @@ from django.contrib.auth import authenticate
 from .models import (
     CustomUser, AdminProfile, SubAdminProfile, DepartmentAdminProfile,
     Department, SubAdminCategory, ComplaintCategory, Complaint, ComplaintLog,
-    ComplaintVote, Worker, WorkerAttendance, DepartmentAttendance
+    ComplaintVote, Worker, WorkerAttendance, DepartmentAttendance, Office
 )
 
 
@@ -84,6 +84,14 @@ class ComplaintCategorySerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class OfficeSerializer(serializers.ModelSerializer):
+    department_name = serializers.CharField(source='department.name', read_only=True)
+    
+    class Meta:
+        model = Office
+        fields = '__all__'
+
+
 # -------------------------
 # Complaint Serializers
 # -------------------------
@@ -98,6 +106,7 @@ class ComplaintSerializer(serializers.ModelSerializer):
     user_username = serializers.CharField(source='user.username', read_only=True)
     category_name = serializers.CharField(source='category.name', read_only=True)
     department_name = serializers.CharField(source='department.name', read_only=True)
+    office_address = serializers.CharField(source='office.address', read_only=True, allow_null=True)
     upvote_count = serializers.IntegerField(read_only=True)
     user_has_voted = serializers.SerializerMethodField()
     
@@ -106,7 +115,7 @@ class ComplaintSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ('user', 'status', 'current_worker', 'current_officer', 
                             'priority', 'upvote_count', 'filter_checked', 'filter_passed',
-                            'sorted', 'assigned', 'is_deleted', 'is_spam', 'is_genuine')
+                            'sorted', 'assigned', 'is_deleted', 'is_spam', 'is_genuine', 'office')
     
     def get_user_has_voted(self, obj):
         request = self.context.get('request')

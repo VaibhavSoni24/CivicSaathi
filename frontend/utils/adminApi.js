@@ -142,24 +142,24 @@ export const adminDepartmentAPI = {
 // Admin Office API
 export const adminOfficeAPI = {
   // Get all offices
-  getAll: (params) => adminApi.get('/admin/offices/', { params }),
+  getAll: (params) => adminApi.get('/offices/', { params }),
   
   // Get offices by department
   getByDepartment: (departmentId, params) => 
-    adminApi.get(`/admin/departments/${departmentId}/offices/`, { params }),
+    adminApi.get('/offices/', { params: { ...params, department_id: departmentId } }),
   
   // Get offices by city
   getByCity: (city, params) => 
-    adminApi.get('/admin/offices/', { params: { ...params, city } }),
+    adminApi.get('/offices/', { params: { ...params, city } }),
   
   // Create office
-  create: (data) => adminApi.post('/admin/offices/', data),
+  create: (data) => adminApi.post('/offices/', data),
   
   // Update office
-  update: (officeId, data) => adminApi.put(`/admin/offices/${officeId}/`, data),
+  update: (officeId, data) => adminApi.put(`/offices/${officeId}/`, data),
   
   // Delete office
-  delete: (officeId) => adminApi.delete(`/admin/offices/${officeId}/`)
+  delete: (officeId) => adminApi.delete(`/offices/${officeId}/`)
 };
 
 // Admin Worker API

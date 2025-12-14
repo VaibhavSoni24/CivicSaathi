@@ -33,6 +33,7 @@ urlpatterns = [
     # Categories & Departments
     path('categories/', views_api.get_categories, name='get_categories'),
     path('departments/', views_api.get_departments, name='get_departments'),
+    path('offices/', views_api.get_offices, name='get_offices'),
     
     # Dashboard
     path('dashboard/stats/', views_api.dashboard_stats, name='dashboard_stats'),

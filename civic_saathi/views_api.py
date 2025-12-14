@@ -11,14 +11,14 @@ from datetime import datetime
 
 from .models import (
     CustomUser, Complaint, ComplaintLog, ComplaintVote, ComplaintCategory,
-    Department, SubAdminCategory, Worker, WorkerAttendance, DepartmentAttendance
+    Department, SubAdminCategory, Worker, WorkerAttendance, DepartmentAttendance, Office
 )
 from .serializers import (
     UserSerializer, UserRegistrationSerializer, LoginSerializer,
     ComplaintSerializer, ComplaintCreateSerializer, ComplaintUpdateSerializer,
     ComplaintLogSerializer, ComplaintVoteSerializer, DepartmentSerializer,
     SubAdminCategorySerializer, ComplaintCategorySerializer,
-    WorkerSerializer, WorkerAttendanceSerializer, DepartmentAttendanceSerializer
+    WorkerSerializer, WorkerAttendanceSerializer, DepartmentAttendanceSerializer, OfficeSerializer
 )
 from .filter_system import ComplaintFilterSystem, ComplaintSortingSystem, ComplaintAssignmentSystem
 from .permissions import IsAdmin, IsSubAdmin, IsDepartmentAdmin, IsCitizen
@@ -33,6 +33,43 @@ def get_action_user(request):
         # Admin user is a mock object, return None for logging
         return None
     return request.user
+
+
+def assign_office_to_complaint(complaint):
+    """
+    Auto-assign office to complaint based on location and status.
+    Assigns if status is PENDING or complaint has passed filtering.
+    """
+    # Check if complaint should be assigned to office
+    if complaint.status not in ['PENDING', 'FILTERING', 'SORTING'] and not complaint.filter_passed:
+        return
+    
+    # Check if complaint has department and city
+    if not complaint.department or not complaint.city:
+        return
+    
+    # Try to find matching office
+    try:
+        office = Office.objects.get(
+            department=complaint.department,
+            city__iexact=complaint.city,
+            is_active=True
+        )
+        complaint.office = office
+        complaint.save()
+    except Office.DoesNotExist:
+        # No matching office found
+        pass
+    except Office.MultipleObjectsReturned:
+        # Multiple offices found, take the first one
+        office = Office.objects.filter(
+            department=complaint.department,
+            city__iexact=complaint.city,
+            is_active=True
+        ).first()
+        if office:
+            complaint.office = office
+            complaint.save()
 
 
 # -------------------------
@@ -124,6 +161,8 @@ class ComplaintCreateView(generics.CreateAPIView):
                 complaint.city, 
                 complaint.state
             )
+            # Auto-assign office based on location
+            assign_office_to_complaint(complaint)
         else:
             complaint.status = 'DECLINED'
         
@@ -322,6 +361,10 @@ def update_complaint_status(request, pk):
         complaint.completion_note = request.data.get('completion_note', '')
         complaint.completed_at = timezone.now()
     
+    # Auto-assign office if status is PENDING and no office assigned
+    if new_status == 'PENDING' and not complaint.office:
+        assign_office_to_complaint(complaint)
+    
     complaint.save()
     
     # Log the action
@@ -487,6 +530,25 @@ def get_departments(request):
     """Get all departments"""
     departments = Department.objects.all()
     serializer = DepartmentSerializer(departments, many=True)
+    return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_offices(request):
+    """Get all offices with optional filters"""
+    city = request.query_params.get('city')
+    department_id = request.query_params.get('department_id')
+    
+    queryset = Office.objects.filter(is_active=True)
+    
+    if city:
+        queryset = queryset.filter(city__iexact=city)
+    if department_id:
+        queryset = queryset.filter(department_id=department_id)
+    
+    queryset = queryset.order_by('city', 'department__name')
+    serializer = OfficeSerializer(queryset, many=True)
     return Response(serializer.data)
 
 

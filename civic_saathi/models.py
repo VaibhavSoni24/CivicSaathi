@@ -119,11 +119,36 @@ class Officer(models.Model):
 
 
 # -------------------------
+# Offices (Department Offices by City)
+# -------------------------
+class Office(models.Model):
+    name = models.CharField(max_length=200)
+    department = models.ForeignKey(Department, on_delete=models.CASCADE, related_name='offices')
+    city = models.CharField(max_length=100)
+    state = models.CharField(max_length=100)
+    address = models.TextField()
+    pincode = models.CharField(max_length=10)
+    phone = models.CharField(max_length=15)
+    email = models.EmailField()
+    office_hours = models.CharField(max_length=100, default='9:00 AM - 5:00 PM')
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ('department', 'city')
+    
+    def __str__(self):
+        return f"{self.name} - {self.city}"
+
+
+# -------------------------
 # Workers (Ground Staff)
 # -------------------------
 class Worker(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
     department = models.ForeignKey(Department, on_delete=models.CASCADE)
+    office = models.ForeignKey(Office, on_delete=models.SET_NULL, null=True, blank=True, related_name='workers')
     role = models.CharField(max_length=100)
     city = models.CharField(max_length=100)
     state = models.CharField(max_length=100)
@@ -180,6 +205,14 @@ class Complaint(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True
+    )
+
+    office = models.ForeignKey(
+        'Office',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='complaints'
     )
 
     title = models.CharField(max_length=200)
