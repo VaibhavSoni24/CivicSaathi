@@ -66,6 +66,21 @@ CORS_ALLOWED_ORIGINS = [
 
 CORS_ALLOW_CREDENTIALS = True
 
+# Allow custom admin headers
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+    'x-admin-token',  # Custom admin header
+    'x-admin-user',   # Custom admin header
+]
+
 ROOT_URLCONF = "municipal.urls"
 
 TEMPLATES = [
@@ -154,11 +169,12 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # REST Framework Settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        'civic_saathi.admin_auth.AdminTokenAuthentication',  # Admin auth first
         'rest_framework.authentication.TokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
+        'rest_framework.permissions.IsAuthenticatedOrReadOnly',  # Changed to allow some read access
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,

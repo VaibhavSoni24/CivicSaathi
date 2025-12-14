@@ -140,19 +140,32 @@ class MyComplaintsView(generics.ListAPIView):
 
 
 class AllComplaintsView(generics.ListAPIView):
-    """Get all complaints in user's area (city/state)"""
+    """Get all complaints in user's area (city/state) or all for admins"""
     serializer_class = ComplaintSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]  # Allow any access for both users and admins
+    authentication_classes = []  # Disable authentication requirement
 
     def get_queryset(self):
-        user = self.request.user
-        city = self.request.query_params.get('city', user.city)
-        state = self.request.query_params.get('state', user.state)
+        # Check if admin headers are present
+        is_admin = self.request.headers.get('X-Admin-Token') or self.request.headers.get('X-Admin-User')
         
         queryset = Complaint.objects.filter(
             is_deleted=False,
             filter_passed=True
         )
+        
+        # If admin, return all complaints without filtering
+        if is_admin:
+            return queryset.order_by('-created_at')
+        
+        # For regular users, filter by location
+        user = self.request.user if self.request.user.is_authenticated else None
+        if user:
+            city = self.request.query_params.get('city', user.city)
+            state = self.request.query_params.get('state', user.state)
+        else:
+            city = self.request.query_params.get('city')
+            state = self.request.query_params.get('state')
         
         if city:
             queryset = queryset.filter(city__icontains=city)
@@ -162,13 +175,20 @@ class AllComplaintsView(generics.ListAPIView):
         return queryset.annotate(
             vote_count=Count('votes')
         ).order_by('-priority', '-upvote_count', '-created_at')
+    
+    def list(self, request, *args, **kwargs):
+        """Override to ensure proper response format"""
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
 
 class ComplaintDetailView(generics.RetrieveAPIView):
     """Get complaint details"""
     queryset = Complaint.objects.all()
     serializer_class = ComplaintSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]  # Allow any access for both users and admins
+    authentication_classes = []  # Disable authentication requirement
 
     def get_serializer_context(self):
         context = super().get_serializer_context()

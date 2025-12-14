@@ -106,19 +106,21 @@ export default function Login() {
         </div>
 
         <div style={styles.divider}>
-          <span style={styles.dividerText}>Quick Access</span>
+          <span style={styles.dividerText}>or</span>
         </div>
 
-        <div style={styles.quickAccess}>
-          <div style={styles.accessCard}>
-            <h3 style={styles.accessTitle}>Admin Login</h3>
-            <p style={styles.accessSubtitle}>Root Authority Access</p>
-          </div>
-          <div style={styles.accessCard}>
-            <h3 style={styles.accessTitle}>Department Admin</h3>
-            <p style={styles.accessSubtitle}>Department-wise Access</p>
-          </div>
-        </div>
+        <button
+          type="button"
+          onClick={() => router.push('/admin/login')}
+          className="btn"
+          style={styles.adminLoginBtn}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+            <path d="M2 17l10 5 10-5M2 12l10 5 10-5"></path>
+          </svg>
+          <span>Admin Login Portal</span>
+        </button>
       </div>
     </div>
   );
@@ -218,26 +220,25 @@ const styles = {
     position: 'relative',
     zIndex: 1,
   },
-  quickAccess: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, 1fr)',
-    gap: '1rem',
-  },
-  accessCard: {
-    backgroundColor: 'var(--bg-tertiary)',
+  adminLoginBtn: {
+    width: '100%',
     padding: '1rem',
-    borderRadius: 'var(--radius-md)',
-    border: '1px solid var(--border-primary)',
+    backgroundColor: 'var(--bg-tertiary)',
+    border: '2px solid var(--border-secondary)',
+    borderRadius: 'var(--radius-lg)',
+    color: 'var(--text-primary)',
+    fontSize: '0.95rem',
+    fontWeight: '600',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '0.75rem',
     cursor: 'pointer',
     transition: 'all 0.2s',
-  },
-  accessTitle: {
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    marginBottom: '0.25rem',
-  },
-  accessSubtitle: {
-    fontSize: '0.75rem',
-    color: 'var(--text-muted)',
+    '&:hover': {
+      backgroundColor: 'var(--bg-secondary)',
+      borderColor: 'var(--accent-primary)',
+      transform: 'translateY(-2px)',
+    },
   },
 };

@@ -1,0 +1,282 @@
+import axios from 'axios';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+
+// Create admin axios instance
+const adminApi = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Add admin token to requests
+adminApi.interceptors.request.use(
+  (config) => {
+    const adminToken = localStorage.getItem('adminToken');
+    const adminUser = localStorage.getItem('adminUser');
+    
+    if (adminToken && adminUser) {
+      config.headers['X-Admin-Token'] = adminToken;
+      config.headers['X-Admin-User'] = adminUser;
+    }
+    
+    // Also check for regular token for backend API calls
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Token ${token}`;
+    }
+    
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Handle response errors
+adminApi.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('adminToken');
+      localStorage.removeItem('adminUser');
+      window.location.href = '/admin/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Admin Complaint API
+export const adminComplaintAPI = {
+  // Get all complaints (Root Admin) - using regular complaints endpoint
+  getAllComplaints: (params) => adminApi.get('/complaints/all/', { params }),
+  
+  // Get complaints by cluster (Sub-Admin) - using regular complaints endpoint, filter on frontend
+  getClusterComplaints: (clusterId, params) => 
+    adminApi.get('/complaints/all/', { params }),
+  
+  // Get complaints by department (Department Admin) - using regular complaints endpoint, filter on frontend
+  getDepartmentComplaints: (departmentId, params) => 
+    adminApi.get('/complaints/all/', { params }),
+  
+  // Get single complaint with full details
+  getComplaintDetail: (id) => adminApi.get(`/complaints/${id}/`),
+  
+  // Verify complaint
+  verifyComplaint: (id, data) => 
+    adminApi.post(`/admin/complaints/${id}/verify/`, data),
+  
+  // Reject complaint
+  rejectComplaint: (id, reason) => 
+    adminApi.post(`/admin/complaints/${id}/reject/`, { reason }),
+  
+  // Assign to worker
+  assignToWorker: (id, workerId, notes) => 
+    adminApi.post(`/admin/complaints/${id}/assign/`, { worker_id: workerId, notes }),
+  
+  // Update status
+  updateStatus: (id, status, notes, completionImage = null) => {
+    const formData = new FormData();
+    formData.append('status', status);
+    if (notes) formData.append('notes', notes);
+    if (completionImage) formData.append('completion_image', completionImage);
+    
+    return adminApi.post(`/admin/complaints/${id}/update-status/`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  
+  // Reassign complaint to different department
+  reassignDepartment: (id, newDepartmentId, reason) => 
+    adminApi.post(`/admin/complaints/${id}/reassign/`, { 
+      department_id: newDepartmentId, 
+      reason 
+    }),
+  
+  // Delete complaint (Sub-Admin and Root Admin only)
+  deleteComplaint: (id, reason) => 
+    adminApi.delete(`/admin/complaints/${id}/`, { data: { reason } }),
+  
+  // Mark as completed with photo
+  markCompleted: (id, completionImage, notes) => {
+    const formData = new FormData();
+    formData.append('completion_image', completionImage);
+    formData.append('notes', notes);
+    return adminApi.post(`/admin/complaints/${id}/complete/`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  
+  // Get complaint logs
+  getComplaintLogs: (id) => adminApi.get(`/complaints/${id}/logs/`),
+  
+  // Bulk operations
+  bulkAssign: (complaintIds, workerId) => 
+    adminApi.post('/admin/complaints/bulk-assign/', { complaint_ids: complaintIds, worker_id: workerId }),
+  
+  bulkDelete: (complaintIds, reason) => 
+    adminApi.post('/admin/complaints/bulk-delete/', { complaint_ids: complaintIds, reason })
+};
+
+// Admin Department API
+export const adminDepartmentAPI = {
+  // Get all departments
+  getAll: () => adminApi.get('/admin/departments/'),
+  
+  // Get department details
+  getDetail: (departmentId) => adminApi.get(`/admin/departments/${departmentId}/`),
+  
+  // Get departments by cluster
+  getClusterDepartments: (clusterId) => 
+    adminApi.get(`/admin/clusters/${clusterId}/departments/`),
+  
+  // Get department statistics
+  getStats: (departmentId, params) => 
+    adminApi.get(`/admin/departments/${departmentId}/stats/`, { params }),
+  
+  // Get cities for department
+  getCities: (departmentId) => 
+    adminApi.get(`/admin/departments/${departmentId}/cities/`)
+};
+
+// Admin Office API
+export const adminOfficeAPI = {
+  // Get all offices
+  getAll: (params) => adminApi.get('/admin/offices/', { params }),
+  
+  // Get offices by department
+  getByDepartment: (departmentId, params) => 
+    adminApi.get(`/admin/departments/${departmentId}/offices/`, { params }),
+  
+  // Get offices by city
+  getByCity: (city, params) => 
+    adminApi.get('/admin/offices/', { params: { ...params, city } }),
+  
+  // Create office
+  create: (data) => adminApi.post('/admin/offices/', data),
+  
+  // Update office
+  update: (officeId, data) => adminApi.put(`/admin/offices/${officeId}/`, data),
+  
+  // Delete office
+  delete: (officeId) => adminApi.delete(`/admin/offices/${officeId}/`)
+};
+
+// Admin Worker API
+export const adminWorkerAPI = {
+  // Get all workers
+  getAll: (params) => adminApi.get('/admin/workers/', { params }),
+  
+  // Get workers by department
+  getByDepartment: (departmentId, params) => 
+    adminApi.get(`/admin/departments/${departmentId}/workers/`, { params }),
+  
+  // Get workers by office
+  getByOffice: (officeId, params) => 
+    adminApi.get(`/admin/offices/${officeId}/workers/`, { params }),
+  
+  // Get worker details
+  getDetail: (workerId) => adminApi.get(`/admin/workers/${workerId}/`),
+  
+  // Create worker
+  create: (data) => adminApi.post('/admin/workers/', data),
+  
+  // Update worker
+  update: (workerId, data) => adminApi.put(`/admin/workers/${workerId}/`, data),
+  
+  // Delete worker
+  delete: (workerId) => adminApi.delete(`/admin/workers/${workerId}/`),
+  
+  // Get worker assignments
+  getAssignments: (workerId, params) => 
+    adminApi.get(`/admin/workers/${workerId}/assignments/`, { params }),
+  
+  // Get worker attendance
+  getAttendance: (workerId, params) => 
+    adminApi.get(`/admin/workers/${workerId}/attendance/`, { params })
+};
+
+// Admin Attendance API
+export const adminAttendanceAPI = {
+  // Get attendance records
+  getRecords: (params) => adminApi.get('/admin/attendance/', { params }),
+  
+  // Get attendance by department
+  getByDepartment: (departmentId, params) => 
+    adminApi.get(`/admin/departments/${departmentId}/attendance/`, { params }),
+  
+  // Get attendance by city
+  getByCity: (city, date, departmentId) => 
+    adminApi.get('/admin/attendance/city/', { 
+      params: { city, date, department: departmentId } 
+    }),
+  
+  // Verify city password for attendance
+  verifyCityPassword: (city, departmentId, password) => 
+    adminApi.post('/admin/attendance/verify-city/', { 
+      city, 
+      department: departmentId, 
+      password 
+    }),
+  
+  // Mark attendance (with city password)
+  markAttendance: (data, cityPassword) => 
+    adminApi.post('/admin/attendance/mark/', { ...data, city_password: cityPassword }),
+  
+  // Bulk mark attendance
+  bulkMark: (records, cityPassword) => 
+    adminApi.post('/admin/attendance/bulk-mark/', { records, city_password: cityPassword }),
+  
+  // Get attendance summary
+  getSummary: (departmentId, params) => 
+    adminApi.get(`/admin/departments/${departmentId}/attendance-summary/`, { params })
+};
+
+// Admin Dashboard API
+export const adminDashboardAPI = {
+  // Get overall statistics (Root Admin)
+  getOverallStats: () => adminApi.get('/admin/dashboard/stats/'),
+  
+  // Get cluster statistics (Sub-Admin)
+  getClusterStats: (clusterId) => 
+    adminApi.get(`/admin/clusters/${clusterId}/stats/`),
+  
+  // Get department statistics (Department Admin)
+  getDepartmentStats: (departmentId, city = null) => 
+    adminApi.get(`/admin/departments/${departmentId}/stats/`, { 
+      params: city ? { city } : {} 
+    }),
+  
+  // Get performance metrics
+  getPerformanceMetrics: (params) => 
+    adminApi.get('/admin/dashboard/performance/', { params }),
+  
+  // Get recent activities
+  getRecentActivities: (params) => 
+    adminApi.get('/admin/dashboard/activities/', { params })
+};
+
+// Admin City Management API
+export const adminCityAPI = {
+  // Get all cities
+  getAll: () => adminApi.get('/admin/cities/'),
+  
+  // Get cities by department
+  getByDepartment: (departmentId) => 
+    adminApi.get(`/admin/departments/${departmentId}/cities/`),
+  
+  // Set/update city password for attendance
+  setCityPassword: (city, departmentId, password) => 
+    adminApi.post('/admin/cities/set-password/', { 
+      city, 
+      department: departmentId, 
+      password 
+    }),
+  
+  // Get city details
+  getCityDetail: (city, departmentId) => 
+    adminApi.get('/admin/cities/detail/', { 
+      params: { city, department: departmentId } 
+    })
+};
+
+export default adminApi;

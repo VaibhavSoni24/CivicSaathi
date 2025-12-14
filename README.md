@@ -1,6 +1,18 @@
-# Municipal (Django) Project
+# CivicSaathi - Municipal Complaint Management System
 
-A Django project for managing civic complaints and workflows. It includes a `civic_saathi` app with REST APIs, admin, and demo data loader.
+A comprehensive Django + Next.js project for managing civic complaints with a powerful **Role-Based Admin System**. Features include citizen complaint filing, department management, worker assignment, attendance tracking, and hierarchical admin control.
+
+## 🎉 NEW: Complete Admin System
+
+We've implemented a full-featured **Admin Login and Role-Based Access Control System** with:
+- **Root Admin (ULB)** - Complete system oversight
+- **4 Sub-Admins** - Cluster-level management
+- **14 Department Admins** - Department-specific operations with multi-city support
+- **City-Specific Attendance** - Password-protected attendance system
+- **Advanced Complaint Management** - Verify, assign, complete, reassign, delete
+
+👉 **[Admin Quick Start Guide](./ADMIN_QUICKSTART.md)**  
+📖 **[Complete Admin Documentation](./ADMIN_SYSTEM_DOCUMENTATION.md)**
 
 ## Quick Start
 

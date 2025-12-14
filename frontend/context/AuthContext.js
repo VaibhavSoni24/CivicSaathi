@@ -34,24 +34,24 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await authAPI.login({ username, password });
       const { user, token } = response.data;
+      
+      // Block admin users from logging in here
+      if (user.user_type === 'ADMIN' || user.user_type === 'SUB_ADMIN' || user.user_type === 'DEPT_ADMIN') {
+        return {
+          success: false,
+          error: 'Admin accounts cannot login here. Please use the Admin Login Portal.'
+        };
+      }
+      
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
       setUser(user);
       
       // Redirect based on user type
-      switch (user.user_type) {
-        case 'ADMIN':
-        case 'SUB_ADMIN':
-          router.push('/admin/dashboard');
-          break;
-        case 'DEPT_ADMIN':
-          router.push('/department/dashboard');
-          break;
-        case 'WORKER':
-          router.push('/worker/dashboard');
-          break;
-        default:
-          router.push('/dashboard');
+      if (user.user_type === 'WORKER') {
+        router.push('/worker/dashboard');
+      } else {
+        router.push('/dashboard');
       }
       
       return { success: true };
