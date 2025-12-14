@@ -150,9 +150,7 @@ class Worker(models.Model):
     department = models.ForeignKey(Department, on_delete=models.CASCADE)
     office = models.ForeignKey(Office, on_delete=models.SET_NULL, null=True, blank=True, related_name='workers')
     role = models.CharField(max_length=100)
-    city = models.CharField(max_length=100)
-    state = models.CharField(max_length=100)
-    address = models.TextField(blank=True)
+    address = models.TextField()
     joining_date = models.DateField()
     is_active = models.BooleanField(default=True)
 

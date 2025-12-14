@@ -306,11 +306,12 @@ def department_complaints(request):
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def assign_to_worker(request, pk):
     """Assign complaint to worker"""
     complaint = get_object_or_404(Complaint, pk=pk)
     worker_id = request.data.get('worker_id')
+    notes = request.data.get('notes', '')
     
     if not worker_id:
         return Response({'error': 'Worker ID required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -320,20 +321,22 @@ def assign_to_worker(request, pk):
     # Update complaint
     old_status = complaint.status
     complaint.current_worker = worker
-    complaint.status = 'ASSIGNED'
+    complaint.status = 'IN_PROGRESS'
+    complaint.assigned = True
     complaint.save()
     
     # Log the action
     ComplaintLog.objects.create(
         complaint=complaint,
         action_by=get_action_user(request),
-        note=f"Assigned to worker {worker.user.username}",
+        note=f"Assigned to worker {worker.user.username}. {notes}",
         old_status=old_status,
-        new_status='ASSIGNED',
+        new_status='IN_PROGRESS',
         new_assignee=worker.user.username
     )
     
-    return Response({'message': 'Complaint assigned successfully'})
+    serializer = ComplaintSerializer(complaint)
+    return Response(serializer.data)
 
 
 @api_view(['POST'])
@@ -449,6 +452,40 @@ def worker_assignments(request):
     ).order_by('-priority', '-created_at')
     
     serializer = ComplaintSerializer(complaints, many=True)
+    return Response(serializer.data)
+
+
+# -------------------------
+# Worker Management Views
+# -------------------------
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_workers(request):
+    """Get all workers with optional filters"""
+    queryset = Worker.objects.filter(is_active=True).select_related('user', 'department', 'office')
+    
+    # Filters
+    department_id = request.query_params.get('department')
+    office_id = request.query_params.get('office')
+    city = request.query_params.get('city')
+    
+    if department_id:
+        queryset = queryset.filter(department_id=department_id)
+    if office_id:
+        queryset = queryset.filter(office_id=office_id)
+    if city:
+        queryset = queryset.filter(user__city__iexact=city)
+    
+    serializer = WorkerSerializer(queryset, many=True)
+    return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_worker_detail(request, pk):
+    """Get worker detail"""
+    worker = get_object_or_404(Worker, pk=pk)
+    serializer = WorkerSerializer(worker)
     return Response(serializer.data)
 
 

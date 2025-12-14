@@ -165,35 +165,35 @@ export const adminOfficeAPI = {
 // Admin Worker API
 export const adminWorkerAPI = {
   // Get all workers
-  getAll: (params) => adminApi.get('/admin/workers/', { params }),
+  getAll: (params) => adminApi.get('/workers/', { params }),
   
   // Get workers by department
   getByDepartment: (departmentId, params) => 
-    adminApi.get(`/admin/departments/${departmentId}/workers/`, { params }),
+    adminApi.get('/workers/', { params: { ...params, department: departmentId } }),
   
   // Get workers by office
   getByOffice: (officeId, params) => 
-    adminApi.get(`/admin/offices/${officeId}/workers/`, { params }),
+    adminApi.get('/workers/', { params: { ...params, office: officeId } }),
   
   // Get worker details
-  getDetail: (workerId) => adminApi.get(`/admin/workers/${workerId}/`),
+  getDetail: (workerId) => adminApi.get(`/workers/${workerId}/`),
   
   // Create worker
-  create: (data) => adminApi.post('/admin/workers/', data),
+  create: (data) => adminApi.post('/workers/', data),
   
   // Update worker
-  update: (workerId, data) => adminApi.put(`/admin/workers/${workerId}/`, data),
+  update: (workerId, data) => adminApi.put(`/workers/${workerId}/`, data),
   
   // Delete worker
-  delete: (workerId) => adminApi.delete(`/admin/workers/${workerId}/`),
+  delete: (workerId) => adminApi.delete(`/workers/${workerId}/`),
   
   // Get worker assignments
   getAssignments: (workerId, params) => 
-    adminApi.get(`/admin/workers/${workerId}/assignments/`, { params }),
+    adminApi.get(`/workers/${workerId}/assignments/`, { params }),
   
   // Get worker attendance
   getAttendance: (workerId, params) => 
-    adminApi.get(`/admin/workers/${workerId}/attendance/`, { params })
+    adminApi.get(`/workers/${workerId}/attendance/`, { params })
 };
 
 // Admin Attendance API

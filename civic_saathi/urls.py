@@ -35,6 +35,10 @@ urlpatterns = [
     path('departments/', views_api.get_departments, name='get_departments'),
     path('offices/', views_api.get_offices, name='get_offices'),
     
+    # Workers
+    path('workers/', views_api.get_workers, name='get_workers'),
+    path('workers/<int:pk>/', views_api.get_worker_detail, name='get_worker_detail'),
+    
     # Dashboard
     path('dashboard/stats/', views_api.dashboard_stats, name='dashboard_stats'),
 ]

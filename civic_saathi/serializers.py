@@ -154,11 +154,20 @@ class ComplaintLogSerializer(serializers.ModelSerializer):
 # -------------------------
 class WorkerSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
+    first_name = serializers.CharField(source='user.first_name', read_only=True)
+    last_name = serializers.CharField(source='user.last_name', read_only=True)
+    email = serializers.CharField(source='user.email', read_only=True)
+    phone = serializers.CharField(source='user.phone', read_only=True)
+    city = serializers.CharField(source='user.city', read_only=True)
+    state = serializers.CharField(source='user.state', read_only=True)
     department_name = serializers.CharField(source='department.name', read_only=True)
+    office_name = serializers.CharField(source='office.name', read_only=True, allow_null=True)
     
     class Meta:
         model = Worker
-        fields = '__all__'
+        fields = ('id', 'username', 'first_name', 'last_name', 'email', 'phone',
+                  'department', 'department_name', 'office', 'office_name', 
+                  'role', 'city', 'state', 'joining_date', 'is_active')
 
 
 class WorkerAttendanceSerializer(serializers.ModelSerializer):
