@@ -198,8 +198,22 @@ export const adminWorkerAPI = {
 
 // Admin Attendance API
 export const adminAttendanceAPI = {
-  // Get attendance records
-  getRecords: (params) => adminApi.get('/admin/attendance/', { params }),
+  // Get attendance register - new API for register-style view
+  getRegister: (date, city, departmentId) => 
+    adminApi.get('/attendance/register/', {
+      params: { date, city, department_id: departmentId }
+    }),
+  
+  // Bulk mark workers as present
+  bulkMarkPresent: (workerIds, date) => 
+    adminApi.post('/attendance/bulk-mark/', {
+      worker_ids: workerIds,
+      date: date,
+      check_in_time: new Date().toTimeString().split(' ')[0]
+    }),
+  
+  // Get attendance records (old API)
+  getRecords: (params) => adminApi.get('/attendance/', { params }),
   
   // Get attendance by department
   getByDepartment: (departmentId, params) => 
@@ -221,7 +235,7 @@ export const adminAttendanceAPI = {
   
   // Mark attendance (with city password)
   markAttendance: (data, cityPassword) => 
-    adminApi.post('/admin/attendance/mark/', { ...data, city_password: cityPassword }),
+    adminApi.post('/attendance/mark/', { ...data, city_password: cityPassword }),
   
   // Bulk mark attendance
   bulkMark: (records, cityPassword) => 

@@ -1,5 +1,5 @@
 from rest_framework import generics, permissions, status, viewsets
-from rest_framework.decorators import api_view, permission_classes, action
+from rest_framework.decorators import api_view, permission_classes, authentication_classes, action
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -22,6 +22,7 @@ from .serializers import (
 )
 from .filter_system import ComplaintFilterSystem, ComplaintSortingSystem, ComplaintAssignmentSystem
 from .permissions import IsAdmin, IsSubAdmin, IsDepartmentAdmin, IsCitizen
+from .admin_auth import AdminTokenAuthentication
 
 
 # -------------------------
@@ -547,6 +548,130 @@ def get_attendance(request):
     queryset = queryset.order_by('-date')
     serializer = WorkerAttendanceSerializer(queryset, many=True)
     return Response(serializer.data)
+
+
+@api_view(['GET'])
+@authentication_classes([AdminTokenAuthentication])
+@permission_classes([AllowAny])
+def get_attendance_register(request):
+    """
+    Get attendance register for all workers for a specific date.
+    Returns all workers with their attendance status (present/absent).
+    If no attendance record exists for a worker on that date, they are marked as absent.
+    """
+    from datetime import date as date_module
+    
+    # Get query parameters
+    date_str = request.query_params.get('date')
+    department_id = request.query_params.get('department_id')
+    city = request.query_params.get('city')
+    
+    # Default to today if no date provided
+    if date_str:
+        try:
+            target_date = date_module.fromisoformat(date_str)
+        except ValueError:
+            return Response({'error': 'Invalid date format. Use YYYY-MM-DD'}, status=400)
+    else:
+        target_date = date_module.today()
+    
+    # Get all workers with filters
+    workers_query = Worker.objects.select_related('user', 'department', 'office').filter(is_active=True)
+    
+    if department_id:
+        workers_query = workers_query.filter(department_id=department_id)
+    if city:
+        workers_query = workers_query.filter(user__city__iexact=city)
+    
+    workers = workers_query.order_by('department__name', 'user__first_name')
+    
+    # Get attendance records for the target date
+    attendance_records = WorkerAttendance.objects.filter(date=target_date).select_related('worker')
+    attendance_dict = {att.worker_id: att for att in attendance_records}
+    
+    # Build register data
+    register_data = []
+    for worker in workers:
+        attendance = attendance_dict.get(worker.id)
+        
+        register_entry = {
+            'worker_id': worker.id,
+            'worker_name': f"{worker.user.first_name} {worker.user.last_name}".strip() or worker.user.username,
+            'username': worker.user.username,
+            'role': worker.role,
+            'department': worker.department.name if worker.department else 'N/A',
+            'office': worker.office.name if worker.office else 'N/A',
+            'city': worker.user.city,
+            'date': target_date,
+            'status': attendance.status if attendance else 'ABSENT',
+            'check_in_time': attendance.check_in_time if attendance else None,
+            'check_out_time': attendance.check_out_time if attendance else None,
+            'marked_by': attendance.marked_by.username if attendance and attendance.marked_by else None,
+        }
+        register_data.append(register_entry)
+    
+    return Response({
+        'date': target_date,
+        'total_workers': len(register_data),
+        'present_count': sum(1 for entry in register_data if entry['status'] == 'PRESENT'),
+        'absent_count': sum(1 for entry in register_data if entry['status'] == 'ABSENT'),
+        'register': register_data
+    })
+
+
+@api_view(['POST'])
+@authentication_classes([AdminTokenAuthentication])
+@permission_classes([AllowAny])
+def bulk_mark_attendance(request):
+    """
+    Mark multiple workers as present for a specific date.
+    Accepts a list of worker IDs and marks them all as present.
+    """
+    from datetime import date as date_module
+    
+    worker_ids = request.data.get('worker_ids', [])
+    date_str = request.data.get('date')
+    check_in_time = request.data.get('check_in_time')
+    
+    if not worker_ids:
+        return Response({'error': 'worker_ids is required'}, status=400)
+    
+    # Default to today if no date provided
+    if date_str:
+        try:
+            target_date = date_module.fromisoformat(date_str)
+        except ValueError:
+            return Response({'error': 'Invalid date format. Use YYYY-MM-DD'}, status=400)
+    else:
+        target_date = date_module.today()
+    
+    # Get marked_by user
+    marked_by_user = get_action_user(request)
+    
+    # Mark attendance for all workers
+    marked_count = 0
+    for worker_id in worker_ids:
+        try:
+            worker = Worker.objects.get(id=worker_id)
+            WorkerAttendance.objects.update_or_create(
+                worker=worker,
+                date=target_date,
+                defaults={
+                    'status': 'PRESENT',
+                    'check_in_time': check_in_time,
+                    'marked_by': marked_by_user
+                }
+            )
+            marked_count += 1
+        except Worker.DoesNotExist:
+            continue
+    
+    return Response({
+        'success': True,
+        'message': f'Marked {marked_count} workers as present',
+        'date': target_date,
+        'marked_count': marked_count
+    })
 
 
 # -------------------------

@@ -29,6 +29,8 @@ urlpatterns = [
     # Attendance
     path('attendance/mark/', views_api.mark_attendance, name='mark_attendance'),
     path('attendance/', views_api.get_attendance, name='get_attendance'),
+    path('attendance/register/', views_api.get_attendance_register, name='get_attendance_register'),
+    path('attendance/bulk-mark/', views_api.bulk_mark_attendance, name='bulk_mark_attendance'),
     
     # Categories & Departments
     path('categories/', views_api.get_categories, name='get_categories'),

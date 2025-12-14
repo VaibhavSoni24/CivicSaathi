@@ -8,11 +8,14 @@ We've implemented a full-featured **Admin Login and Role-Based Access Control Sy
 - **Root Admin (ULB)** - Complete system oversight
 - **4 Sub-Admins** - Cluster-level management
 - **14 Department Admins** - Department-specific operations with multi-city support
-- **City-Specific Attendance** - Password-protected attendance system
+- **126 Workers** - 3 workers per office (Field Worker, Senior Worker, Supervisor)
+- **42 Offices** - Across 3 cities (Jaipur, Delhi, Mumbai) for 14 departments
+- **Worker Attendance Register** - Register-style attendance tracking with bulk operations
 - **Advanced Complaint Management** - Verify, assign, complete, reassign, delete
 
 👉 **[Admin Quick Start Guide](./ADMIN_QUICKSTART.md)**  
-📖 **[Complete Admin Documentation](./ADMIN_SYSTEM_DOCUMENTATION.md)**
+📖 **[Complete Admin Documentation](./ADMIN_SYSTEM_DOCUMENTATION.md)**  
+📋 **[Attendance System Guide](./ATTENDANCE_SYSTEM.md)**
 
 ## Quick Start
 
