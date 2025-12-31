@@ -98,7 +98,7 @@ export default function AdminComplaints() {
     }
 
     if (filters.department !== 'all') {
-      filtered = filtered.filter(c => c.department === filters.department);
+      filtered = filtered.filter(c => c.department_name === filters.department);
     }
 
     if (filters.city !== 'all') {
@@ -110,7 +110,8 @@ export default function AdminComplaints() {
       filtered = filtered.filter(c => 
         c.title?.toLowerCase().includes(search) ||
         c.description?.toLowerCase().includes(search) ||
-        c.complaint_id?.toLowerCase().includes(search)
+        c.complaint_id?.toLowerCase().includes(search) ||
+        c.id?.toString().includes(search)
       );
     }
 
@@ -119,24 +120,32 @@ export default function AdminComplaints() {
 
   const getStatusColor = (status) => {
     const colors = {
+      'SUBMITTED': '#3b82f6',
+      'FILTERING': '#8b5cf6',
       'PENDING': '#f59e0b',
-      'VERIFIED': '#3b82f6',
-      'IN_PROCESS': '#8b5cf6',
+      'ASSIGNED': '#8b5cf6',
+      'IN_PROGRESS': '#8b5cf6',
       'COMPLETED': '#10b981',
-      'SOLVED': '#06b6d4',
-      'REJECTED': '#ef4444'
+      'RESOLVED': '#10b981',
+      'DECLINED': '#6b7280',
+      'REJECTED': '#ef4444',
+      'SORTING': '#f59e0b'
     };
     return colors[status] || '#6b7280';
   };
 
   const getStatusBadge = (status) => {
     const styles = {
+      'SUBMITTED': { bg: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: 'rgba(59, 130, 246, 0.3)' },
+      'FILTERING': { bg: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', border: 'rgba(139, 92, 246, 0.3)' },
       'PENDING': { bg: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', border: 'rgba(245, 158, 11, 0.3)' },
-      'VERIFIED': { bg: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: 'rgba(59, 130, 246, 0.3)' },
-      'IN_PROCESS': { bg: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', border: 'rgba(139, 92, 246, 0.3)' },
+      'ASSIGNED': { bg: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', border: 'rgba(139, 92, 246, 0.3)' },
+      'IN_PROGRESS': { bg: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', border: 'rgba(139, 92, 246, 0.3)' },
       'COMPLETED': { bg: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: 'rgba(16, 185, 129, 0.3)' },
-      'SOLVED': { bg: 'rgba(6, 182, 212, 0.1)', color: '#06b6d4', border: 'rgba(6, 182, 212, 0.3)' },
-      'REJECTED': { bg: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'rgba(239, 68, 68, 0.3)' }
+      'RESOLVED': { bg: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: 'rgba(16, 185, 129, 0.3)' },
+      'DECLINED': { bg: 'rgba(107, 114, 128, 0.1)', color: '#6b7280', border: 'rgba(107, 114, 128, 0.3)' },
+      'REJECTED': { bg: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'rgba(239, 68, 68, 0.3)' },
+      'SORTING': { bg: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', border: 'rgba(245, 158, 11, 0.3)' }
     };
     const style = styles[status] || { bg: 'rgba(107, 114, 128, 0.1)', color: '#6b7280', border: 'rgba(107, 114, 128, 0.3)' };
     return (
@@ -207,12 +216,15 @@ export default function AdminComplaints() {
                     onChange={(e) => setFilters({...filters, status: e.target.value})}
                     style={styles.filterSelect}
                   >
-                    <option value="all">All Status</option>
-                    <option value="PENDING">Pending</option>
-                    <option value="VERIFIED">Verified</option>
-                    <option value="IN_PROCESS">In Process</option>
+                    <option value="all">All Statuses</option>
+                    <option value="SUBMITTED">Submitted</option>
+                    <option value="FILTERING">Under Filter Check</option>
+                    <option value="PENDING">Pending Assignment</option>
+                    <option value="ASSIGNED">Assigned to Worker</option>
+                    <option value="IN_PROGRESS">In Progress</option>
                     <option value="COMPLETED">Completed</option>
-                    <option value="SOLVED">Solved</option>
+                    <option value="RESOLVED">Resolved</option>
+                    <option value="DECLINED">Declined</option>
                     <option value="REJECTED">Rejected</option>
                   </select>
                 </div>
@@ -226,8 +238,8 @@ export default function AdminComplaints() {
                       style={styles.filterSelect}
                     >
                       <option value="all">All Departments</option>
-                      {accessibleDepartments.map(deptId => (
-                        <option key={deptId} value={deptId}>{deptId}</option>
+                      {[...new Set(complaints.map(c => c.department_name).filter(Boolean))].sort().map(deptName => (
+                        <option key={deptName} value={deptName}>{deptName}</option>
                       ))}
                     </select>
                   </div>
@@ -331,9 +343,15 @@ function ComplaintCard({ complaint, getStatusBadge, onClick }) {
         </div>
 
         <div style={styles.cardFooter}>
-          <span style={styles.department}>{complaint.department}</span>
-          {complaint.category && (
-            <span style={styles.category}>{complaint.category}</span>
+          <span style={styles.department}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '6px' }}>
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+            {complaint.department_name || complaint.department || 'No Department'}
+          </span>
+          {complaint.category_name && (
+            <span style={styles.category}>{complaint.category_name}</span>
           )}
         </div>
       </div>
