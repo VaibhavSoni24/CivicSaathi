@@ -231,7 +231,10 @@ export default function ComplaintDetail() {
             {complaint.sla_timer && (
               <div style={{
                 ...styles.timerCard,
-                ...(complaint.sla_timer.status === 'overdue' ? styles.timerOverdue :
+                ...(complaint.sla_timer.status === 'completed' ? styles.timerCompleted :
+                    complaint.sla_timer.status === 'declined' ? styles.timerDeclined :
+                    complaint.sla_timer.status === 'pending' ? styles.timerPending :
+                    complaint.sla_timer.status === 'overdue' ? styles.timerOverdue :
                     complaint.sla_timer.status === 'critical' ? styles.timerCritical :
                     complaint.sla_timer.status === 'warning' ? styles.timerWarning :
                     styles.timerOk)
@@ -248,30 +251,37 @@ export default function ComplaintDetail() {
                   </span>
                 </div>
                 
-                <div style={styles.timerStats}>
-                  <div style={styles.timerStat}>
-                    <div style={styles.timerStatLabel}>Time Elapsed</div>
-                    <div style={styles.timerStatValue}>{complaint.sla_timer.hours_elapsed}h</div>
-                  </div>
-                  <div style={styles.timerStat}>
-                    <div style={styles.timerStatLabel}>
-                      {complaint.sla_timer.is_overdue ? 'Overdue By' : 'Time Remaining'}
+                {/* Hide timer stats for declined complaints */}
+                {complaint.sla_timer.status !== 'declined' && (
+                  <div style={styles.timerStats}>
+                    <div style={styles.timerStat}>
+                      <div style={styles.timerStatLabel}>
+                        {complaint.sla_timer.status === 'completed' ? 'Total Time' : 'Time Elapsed'}
+                      </div>
+                      <div style={styles.timerStatValue}>{complaint.sla_timer.hours_elapsed}h</div>
                     </div>
-                    <div style={styles.timerStatValue}>
-                      {complaint.sla_timer.is_overdue ? 
-                        complaint.sla_timer.hours_overdue : 
-                        complaint.sla_timer.hours_remaining}h
+                    {complaint.sla_timer.status !== 'completed' && (
+                      <div style={styles.timerStat}>
+                        <div style={styles.timerStatLabel}>
+                          {complaint.sla_timer.is_overdue ? 'Overdue By' : 'Time Remaining'}
+                        </div>
+                        <div style={styles.timerStatValue}>
+                          {complaint.sla_timer.is_overdue ? 
+                            complaint.sla_timer.hours_overdue : 
+                            complaint.sla_timer.hours_remaining}h
+                        </div>
+                      </div>
+                    )}
+                    <div style={styles.timerStat}>
+                      <div style={styles.timerStatLabel}>SLA Deadline</div>
+                      <div style={styles.timerStatValue}>{complaint.sla_timer.escalation_deadline}h</div>
+                    </div>
+                    <div style={styles.timerStat}>
+                      <div style={styles.timerStatLabel}>Resolution Target</div>
+                      <div style={styles.timerStatValue}>{complaint.sla_timer.resolution_deadline}h</div>
                     </div>
                   </div>
-                  <div style={styles.timerStat}>
-                    <div style={styles.timerStatLabel}>SLA Deadline</div>
-                    <div style={styles.timerStatValue}>{complaint.sla_timer.escalation_deadline}h</div>
-                  </div>
-                  <div style={styles.timerStat}>
-                    <div style={styles.timerStatLabel}>Resolution Target</div>
-                    <div style={styles.timerStatValue}>{complaint.sla_timer.resolution_deadline}h</div>
-                  </div>
-                </div>
+                )}
 
                 {complaint.sla_timer.escalation_count > 0 && (
                   <div style={styles.escalationWarning}>
@@ -287,55 +297,101 @@ export default function ComplaintDetail() {
                 {/* Header Card */}
                 <div style={styles.card}>
                   <div style={styles.cardHeader}>
-                    <div>
-                      <h1 style={styles.complaintTitle}>{complaint.title}</h1>
-                      <p style={styles.complaintId}>ID: {complaint.complaint_id || complaint.id}</p>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                        <h1 style={styles.complaintTitle}>{complaint.title}</h1>
+                        <span style={{
+                          ...styles.statusBadge,
+                          backgroundColor: `${statusColor}20`,
+                          color: statusColor
+                        }}>
+                          {complaint.status}
+                        </span>
+                      </div>
+                      <p style={styles.complaintId}>Complaint ID: #{complaint.complaint_id || complaint.id}</p>
                     </div>
-                    <span style={{
-                      ...styles.statusBadge,
-                      backgroundColor: `${statusColor}20`,
-                      color: statusColor
-                    }}>
-                      {complaint.status}
-                    </span>
                   </div>
 
-                  <div style={styles.metaGrid}>
-                    <MetaItem icon="📍" label="Location" value={`${complaint.city}, ${complaint.state}`} />
-                    <MetaItem icon="🏢" label="Department" value={complaint.department} />
-                    <MetaItem icon="📂" label="Category" value={complaint.category || 'N/A'} />
-                    <MetaItem icon="📅" label="Submitted" value={new Date(complaint.created_at).toLocaleString()} />
-                    <MetaItem icon="👤" label="Citizen" value={complaint.citizen_name || 'Anonymous'} />
-                    <MetaItem icon="👍" label="Upvotes" value={complaint.upvote_count || 0} />
+                  <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid var(--border-primary)' }}>
+                    <div style={styles.metaGrid}>
+                      <MetaItem icon="📍" label="Location" value={`${complaint.city}, ${complaint.state}`} />
+                      <MetaItem icon="🏢" label="Department" value={complaint.department} />
+                      <MetaItem icon="📂" label="Category" value={complaint.category || 'N/A'} />
+                      <MetaItem icon="📅" label="Submitted" value={new Date(complaint.created_at).toLocaleString()} />
+                      <MetaItem icon="👤" label="Citizen" value={complaint.citizen_name || complaint.citizen_email || 'Anonymous'} />
+                      <MetaItem icon="👍" label="Upvotes" value={complaint.upvote_count || 0} />
+                    </div>
                   </div>
                 </div>
 
                 {/* Description Card */}
                 <div style={styles.card}>
-                  <h3 style={styles.cardTitle}>Description</h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                    <div style={styles.iconBadge}>📝</div>
+                    <h3 style={styles.cardTitle}>Description</h3>
+                  </div>
                   <p style={styles.description}>{complaint.description}</p>
                 </div>
 
                 {/* Images */}
                 {complaint.image && (
                   <div style={styles.card}>
-                    <h3 style={styles.cardTitle}>Complaint Image</h3>
-                    <img src={complaint.image} alt="Complaint" style={styles.complaintImage} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                      <div style={styles.iconBadge}>📷</div>
+                      <h3 style={styles.cardTitle}>Complaint Image</h3>
+                    </div>
+                    <div style={styles.imageContainer}>
+                      <img src={complaint.image} alt="Complaint" style={styles.complaintImage} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Completion Image */}
+                {complaint.completion_image && (
+                  <div style={styles.card}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                      <div style={{ ...styles.iconBadge, backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>✅</div>
+                      <h3 style={styles.cardTitle}>Completion Photo</h3>
+                    </div>
+                    <div style={styles.imageContainer}>
+                      <img src={complaint.completion_image} alt="Completion" style={styles.complaintImage} />
+                    </div>
+                    {complaint.completion_note && (
+                      <div style={styles.completionNote}>
+                        <p><strong>Note:</strong> {complaint.completion_note}</p>
+                      </div>
+                    )}
                   </div>
                 )}
 
                 {/* Location Map */}
                 {complaint.latitude && complaint.longitude && (
                   <div style={styles.card}>
-                    <h3 style={styles.cardTitle}>Location</h3>
-                    <div style={styles.mapPlaceholder}>
-                      <p>📍 Lat: {complaint.latitude}, Long: {complaint.longitude}</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                      <div style={styles.iconBadge}>📍</div>
+                      <h3 style={styles.cardTitle}>Location Details</h3>
+                    </div>
+                    <div style={styles.locationCard}>
+                      <div style={styles.coordinatesRow}>
+                        <div style={styles.coordinate}>
+                          <span style={styles.coordLabel}>Latitude</span>
+                          <span style={styles.coordValue}>{parseFloat(complaint.latitude).toFixed(6)}</span>
+                        </div>
+                        <div style={styles.coordinate}>
+                          <span style={styles.coordLabel}>Longitude</span>
+                          <span style={styles.coordValue}>{parseFloat(complaint.longitude).toFixed(6)}</span>
+                        </div>
+                      </div>
                       <a 
                         href={`https://www.google.com/maps?q=${complaint.latitude},${complaint.longitude}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        style={styles.mapLink}
+                        style={styles.mapButton}
                       >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/>
+                          <circle cx="12" cy="10" r="3"/>
+                        </svg>
                         Open in Google Maps
                       </a>
                     </div>
@@ -347,7 +403,10 @@ export default function ComplaintDetail() {
               <div style={styles.rightColumn}>
                 {/* Quick Status Change */}
                 <div style={styles.card}>
-                  <h3 style={styles.cardTitle}>Quick Status Update</h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                    <div style={styles.iconBadge}>⚡</div>
+                    <h3 style={styles.cardTitle}>Quick Status Update</h3>
+                  </div>
                   <select
                     value={quickStatus}
                     onChange={(e) => {
@@ -371,7 +430,10 @@ export default function ComplaintDetail() {
 
                 {/* Action Controls */}
                 <div style={styles.card}>
-                  <h3 style={styles.cardTitle}>Admin Actions</h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                    <div style={styles.iconBadge}>🛠️</div>
+                    <h3 style={styles.cardTitle}>Admin Actions</h3>
+                  </div>
                   
                   <div style={styles.actionsContainer}>
                     {/* Verify */}
@@ -421,11 +483,23 @@ export default function ComplaintDetail() {
                 {/* Worker Info */}
                 {complaint.assigned_worker && (
                   <div style={styles.card}>
-                    <h3 style={styles.cardTitle}>Assigned Worker</h3>
-                    <div style={styles.workerInfo}>
-                      <p><strong>Name:</strong> {complaint.assigned_worker.name}</p>
-                      <p><strong>ID:</strong> {complaint.assigned_worker.id}</p>
-                      <p><strong>Contact:</strong> {complaint.assigned_worker.phone || 'N/A'}</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                      <div style={{ ...styles.iconBadge, backgroundColor: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6' }}>👷</div>
+                      <h3 style={styles.cardTitle}>Assigned Worker</h3>
+                    </div>
+                    <div style={styles.workerInfoCard}>
+                      <div style={styles.workerInfoRow}>
+                        <span style={styles.workerLabel}>Name:</span>
+                        <span style={styles.workerValue}>{complaint.assigned_worker.name}</span>
+                      </div>
+                      <div style={styles.workerInfoRow}>
+                        <span style={styles.workerLabel}>Worker ID:</span>
+                        <span style={styles.workerValue}>{complaint.assigned_worker.id}</span>
+                      </div>
+                      <div style={styles.workerInfoRow}>
+                        <span style={styles.workerLabel}>Contact:</span>
+                        <span style={styles.workerValue}>{complaint.assigned_worker.phone || 'N/A'}</span>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -583,29 +657,39 @@ const styles = {
   main: { paddingTop: '70px' },
   content: { maxWidth: '1400px', margin: '0 auto', padding: '30px 20px' },
   loadingContainer: { minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '20px', backgroundColor: 'var(--bg-primary)', color: 'var(--text-secondary)' },
-  backButton: { display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: 'var(--bg-card)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-md)', cursor: 'pointer', marginBottom: '20px', fontSize: '14px', color: 'var(--text-primary)' },
-  grid: { display: 'grid', gridTemplateColumns: '1fr 400px', gap: '20px' },
-  leftColumn: { display: 'flex', flexDirection: 'column', gap: '20px' },
-  rightColumn: { display: 'flex', flexDirection: 'column', gap: '20px' },
-  card: { background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', padding: '24px', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-primary)' },
-  cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', gap: '20px' },
-  cardTitle: { fontSize: '18px', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '16px' },
-  complaintTitle: { fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)', margin: '0 0 8px 0' },
-  complaintId: { fontSize: '14px', color: 'var(--text-secondary)', margin: 0 },
-  statusBadge: { padding: '6px 16px', borderRadius: '16px', fontSize: '13px', fontWeight: '600', border: '1px solid currentColor' },
-  statusSelect: { width: '100%', padding: '12px', border: '2px solid var(--border-secondary)', borderRadius: 'var(--radius-md)', fontSize: '14px', backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: '500' },
-  metaGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' },
-  metaItem: { display: 'flex', gap: '12px', alignItems: 'flex-start' },
-  metaIcon: { fontSize: '20px' },
-  metaLabel: { fontSize: '12px', color: 'var(--text-secondary)', margin: '0 0 4px 0' },
-  metaValue: { fontSize: '14px', color: 'var(--text-primary)', fontWeight: '500', margin: 0 },
-  description: { fontSize: '15px', color: 'var(--text-secondary)', lineHeight: '1.6' },
-  complaintImage: { width: '100%', borderRadius: 'var(--radius-md)', marginTop: '12px' },
-  mapPlaceholder: { padding: '20px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', textAlign: 'center', border: '1px solid var(--border-primary)' },
-  mapLink: { display: 'inline-block', marginTop: '12px', color: '#3b82f6', textDecoration: 'none', fontWeight: '500' },
-  actionsContainer: { display: 'flex', flexDirection: 'column', gap: '10px' },
-  actionButton: { width: '100%', padding: '12px', background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)', color: 'white', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontSize: '14px', fontWeight: '600', boxShadow: '0 2px 8px rgba(79, 70, 229, 0.3)' },
-  workerInfo: { fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.8' },
+  backButton: { display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', background: 'var(--bg-card)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-md)', cursor: 'pointer', marginBottom: '24px', fontSize: '14px', fontWeight: '500', color: 'var(--text-primary)', transition: 'all 0.2s', ':hover': { backgroundColor: 'var(--bg-hover)', transform: 'translateX(-2px)' } },
+  grid: { display: 'grid', gridTemplateColumns: '1fr 420px', gap: '24px' },
+  leftColumn: { display: 'flex', flexDirection: 'column', gap: '24px' },
+  rightColumn: { display: 'flex', flexDirection: 'column', gap: '24px' },
+  card: { background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', padding: '28px', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-primary)', transition: 'box-shadow 0.2s' },
+  cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '20px' },
+  cardTitle: { fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)', margin: 0 },
+  iconBadge: { width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', backgroundColor: 'rgba(79, 70, 229, 0.1)', color: '#4f46e5', flexShrink: 0 },
+  complaintTitle: { fontSize: '26px', fontWeight: '700', color: 'var(--text-primary)', margin: 0, lineHeight: '1.3' },
+  complaintId: { fontSize: '13px', color: 'var(--text-secondary)', margin: 0, fontWeight: '500' },
+  statusBadge: { padding: '8px 18px', borderRadius: '20px', fontSize: '12px', fontWeight: '700', border: '2px solid currentColor', textTransform: 'uppercase', letterSpacing: '0.5px' },
+  statusSelect: { width: '100%', padding: '14px', border: '2px solid var(--border-secondary)', borderRadius: 'var(--radius-md)', fontSize: '14px', backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: '500', transition: 'border-color 0.2s', ':focus': { borderColor: '#4f46e5', outline: 'none' } },
+  metaGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' },
+  metaItem: { display: 'flex', gap: '12px', alignItems: 'flex-start', padding: '12px', backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-primary)' },
+  metaIcon: { fontSize: '22px', flexShrink: 0 },
+  metaLabel: { fontSize: '11px', color: 'var(--text-secondary)', margin: '0 0 4px 0', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.5px' },
+  metaValue: { fontSize: '14px', color: 'var(--text-primary)', fontWeight: '600', margin: 0 },
+  description: { fontSize: '15px', color: 'var(--text-secondary)', lineHeight: '1.8', margin: 0 },
+  imageContainer: { borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border-primary)', backgroundColor: 'var(--bg-tertiary)' },
+  complaintImage: { width: '100%', display: 'block', objectFit: 'cover' },
+  completionNote: { marginTop: '16px', padding: '12px 16px', backgroundColor: 'rgba(16, 185, 129, 0.05)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(16, 185, 129, 0.2)', color: 'var(--text-secondary)', fontSize: '14px', lineHeight: '1.6' },
+  locationCard: { backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: '20px', border: '1px solid var(--border-primary)' },
+  coordinatesRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' },
+  coordinate: { display: 'flex', flexDirection: 'column', gap: '6px', padding: '12px', backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-primary)' },
+  coordLabel: { fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.5px' },
+  coordValue: { fontSize: '14px', color: 'var(--text-primary)', fontWeight: '600', fontFamily: 'monospace' },
+  mapButton: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%', padding: '12px', background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', color: 'white', textDecoration: 'none', borderRadius: 'var(--radius-md)', fontSize: '14px', fontWeight: '600', transition: 'transform 0.2s', ':hover': { transform: 'translateY(-1px)' } },
+  actionsContainer: { display: 'flex', flexDirection: 'column', gap: '12px' },
+  actionButton: { width: '100%', padding: '14px', background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)', color: 'white', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontSize: '14px', fontWeight: '600', boxShadow: '0 2px 8px rgba(79, 70, 229, 0.3)', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', ':hover': { transform: 'translateY(-2px)', boxShadow: '0 4px 12px rgba(79, 70, 229, 0.4)' } },
+  workerInfoCard: { display: 'flex', flexDirection: 'column', gap: '12px' },
+  workerInfoRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-primary)' },
+  workerLabel: { fontSize: '13px', color: 'var(--text-secondary)', fontWeight: '600' },
+  workerValue: { fontSize: '14px', color: 'var(--text-primary)', fontWeight: '600' },
   modalOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 },
   modal: { background: 'var(--bg-card)', borderRadius: 'var(--radius-xl)', maxWidth: '500px', width: '90%', maxHeight: '90vh', overflow: 'auto', border: '1px solid var(--border-primary)' },
   modalHeader: { padding: '20px', borderBottom: '1px solid var(--border-primary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
@@ -623,18 +707,21 @@ const styles = {
   confirmButton: { padding: '10px 20px', background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)', color: 'white', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontSize: '14px', fontWeight: '500', boxShadow: '0 2px 8px rgba(79, 70, 229, 0.3)' },
   errorContainer: { padding: '60px 20px', textAlign: 'center', color: 'var(--text-secondary)' },
   // Timer styles
-  timerCard: { marginBottom: '20px', padding: '24px', borderRadius: '12px', border: '2px solid', transition: 'all 0.3s ease' },
-  timerOverdue: { background: 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)', borderColor: '#dc2626' },
-  timerCritical: { background: 'linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%)', borderColor: '#ea580c' },
-  timerWarning: { background: 'linear-gradient(135deg, #fefce8 0%, #fef08a 100%)', borderColor: '#eab308' },
-  timerOk: { background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)', borderColor: '#10b981' },
+  timerCard: { marginBottom: '20px', padding: '24px', borderRadius: '12px', border: '2px solid', transition: 'all 0.3s ease', backgroundColor: 'var(--bg-secondary)' },
+  timerCompleted: { borderColor: '#10b981', boxShadow: '0 0 20px rgba(16, 185, 129, 0.2)' },
+  timerDeclined: { borderColor: '#6b7280', boxShadow: '0 0 20px rgba(107, 114, 128, 0.15)' },
+  timerPending: { borderColor: '#3b82f6', boxShadow: '0 0 20px rgba(59, 130, 246, 0.15)' },
+  timerOverdue: { borderColor: '#dc2626', boxShadow: '0 0 20px rgba(220, 38, 38, 0.15)' },
+  timerCritical: { borderColor: '#ea580c', boxShadow: '0 0 20px rgba(234, 88, 12, 0.15)' },
+  timerWarning: { borderColor: '#eab308', boxShadow: '0 0 20px rgba(234, 179, 8, 0.15)' },
+  timerOk: { borderColor: '#10b981', boxShadow: '0 0 20px rgba(16, 185, 129, 0.15)' },
   timerHeader: { display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' },
   timerIcon: { fontSize: '32px' },
-  timerTitle: { fontSize: '20px', fontWeight: '700', flex: 1, margin: 0 },
+  timerTitle: { fontSize: '20px', fontWeight: '700', flex: 1, margin: 0, color: 'var(--text-primary)' },
   priorityBadge: { padding: '6px 14px', borderRadius: '16px', fontSize: '12px', fontWeight: '700', color: 'white', textTransform: 'uppercase', letterSpacing: '0.05em' },
-  timerStats: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' },
-  timerStat: { textAlign: 'center', padding: '12px', background: 'rgba(255, 255, 255, 0.6)', borderRadius: '8px' },
-  timerStatLabel: { fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' },
-  timerStatValue: { fontSize: '24px', fontWeight: '700', color: '#1e293b' },
-  escalationWarning: { marginTop: '16px', padding: '12px 16px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', fontSize: '14px', fontWeight: '600', color: '#dc2626', textAlign: 'center' }
+  timerStats: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '16px' },
+  timerStat: { textAlign: 'center', padding: '12px', backgroundColor: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-primary)' },
+  timerStatLabel: { fontSize: '11px', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' },
+  timerStatValue: { fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)' },
+  escalationWarning: { marginTop: '16px', padding: '12px 16px', background: 'rgba(220, 38, 38, 0.1)', border: '1px solid rgba(220, 38, 38, 0.3)', borderRadius: '8px', fontSize: '14px', fontWeight: '600', color: '#dc2626', textAlign: 'center' }
 };

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAdminAuth } from '../../context/AdminAuthContext';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
+import Link from 'next/link';
 import AdminNavbar from '../../components/AdminNavbar';
 import { adminDashboardAPI } from '../../utils/adminApi';
 
@@ -135,41 +136,51 @@ export default function AdminDashboard() {
 
             {/* Statistics Grid */}
             <div style={styles.statsGrid}>
-              <StatCard
-                title="Total Complaints"
-                value={stats?.total_complaints || 0}
-                icon="📋"
-                color="#3b82f6"
-                bgColor="rgba(59, 130, 246, 0.1)"
-              />
-              <StatCard
-                title="Pending Review"
-                value={stats?.pending || 0}
-                icon="⏳"
-                color="#f59e0b"
-                bgColor="rgba(245, 158, 11, 0.1)"
-              />
-              <StatCard
-                title="In Progress"
-                value={stats?.in_progress || 0}
-                icon="⚙️"
-                color="#8b5cf6"
-                bgColor="rgba(139, 92, 246, 0.1)"
-              />
-              <StatCard
-                title="Completed/Resolved"
-                value={(stats?.completed || 0) + (stats?.resolved || 0)}
-                icon="✅"
-                color="#10b981"
-                bgColor="rgba(16, 185, 129, 0.1)"
-              />
-              <StatCard
-                title="Rejected"
-                value={stats?.rejected || 0}
-                icon="❌"
-                color="#ef4444"
-                bgColor="rgba(239, 68, 68, 0.1)"
-              />
+              <Link href="/admin/complaints" style={{ textDecoration: 'none' }}>
+                <StatCard
+                  title="Total Complaints"
+                  value={stats?.total_complaints || 0}
+                  icon="📋"
+                  color="#3b82f6"
+                  bgColor="rgba(59, 130, 246, 0.1)"
+                />
+              </Link>
+              <Link href="/admin/complaints/status/pending" style={{ textDecoration: 'none' }}>
+                <StatCard
+                  title="Pending Review"
+                  value={stats?.pending || 0}
+                  icon="⏳"
+                  color="#f59e0b"
+                  bgColor="rgba(245, 158, 11, 0.1)"
+                />
+              </Link>
+              <Link href="/admin/complaints/status/in-progress" style={{ textDecoration: 'none' }}>
+                <StatCard
+                  title="In Progress"
+                  value={stats?.in_progress || 0}
+                  icon="⚙️"
+                  color="#8b5cf6"
+                  bgColor="rgba(139, 92, 246, 0.1)"
+                />
+              </Link>
+              <Link href="/admin/complaints/status/completed" style={{ textDecoration: 'none' }}>
+                <StatCard
+                  title="Completed/Resolved"
+                  value={(stats?.completed || 0) + (stats?.resolved || 0)}
+                  icon="✅"
+                  color="#10b981"
+                  bgColor="rgba(16, 185, 129, 0.1)"
+                />
+              </Link>
+              <Link href="/admin/complaints/status/rejected" style={{ textDecoration: 'none' }}>
+                <StatCard
+                  title="Rejected"
+                  value={stats?.rejected || 0}
+                  icon="❌"
+                  color="#ef4444"
+                  bgColor="rgba(239, 68, 68, 0.1)"
+                />
+              </Link>
             </div>
 
             {/* Quick Actions */}
@@ -360,7 +371,8 @@ const styles = {
     gap: '16px',
     boxShadow: 'var(--shadow-md)',
     border: '1px solid var(--border-primary)',
-    transition: 'transform 0.2s, box-shadow 0.2s'
+    transition: 'transform 0.2s, box-shadow 0.2s',
+    cursor: 'pointer'
   },
   statIcon: {
     width: '56px',

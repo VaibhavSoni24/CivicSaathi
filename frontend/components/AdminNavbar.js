@@ -28,7 +28,7 @@ export default function AdminNavbar() {
           </NavLink>
           
           <NavLink href="/admin/complaints" active={router.pathname.startsWith('/admin/complaints')}>
-            Complaints
+            All Complaints
           </NavLink>
           
           {(isRootAdmin || isSubAdmin) && (
