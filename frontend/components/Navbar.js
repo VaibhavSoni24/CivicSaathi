@@ -50,11 +50,11 @@ export default function Navbar() {
               </Link>
               {user.user_type === 'CITIZEN' && (
                 <>
-                  <Link href="/complaints" style={styles.link}>
-                    Complaints
+                  <Link href="/complaints/all" style={styles.link}>
+                    All Complaints
                   </Link>
-                  <Link href="/complaints/new" style={styles.link}>
-                    New Complaint
+                  <Link href="/complaints" style={styles.link}>
+                    My Complaints
                   </Link>
                 </>
               )}

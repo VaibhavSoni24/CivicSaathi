@@ -110,6 +110,9 @@ class ComplaintSerializer(serializers.ModelSerializer):
     upvote_count = serializers.IntegerField(read_only=True)
     user_has_voted = serializers.SerializerMethodField()
     
+    # SLA Timer fields
+    sla_timer = serializers.SerializerMethodField()
+    
     class Meta:
         model = Complaint
         fields = '__all__'
@@ -122,6 +125,135 @@ class ComplaintSerializer(serializers.ModelSerializer):
         if request and request.user.is_authenticated:
             return ComplaintVote.objects.filter(complaint=obj, user=request.user).exists()
         return False
+    
+    def get_sla_timer(self, obj):
+        """Calculate SLA timer information for frontend display"""
+        from django.utils import timezone
+        
+        if not obj.category or not hasattr(obj.category, 'sla_config'):
+            return None
+        
+        priority_map = {1: 'Normal', 2: 'High', 3: 'Critical'}
+        
+        # If complaint is declined or rejected, show declined status with no timer
+        if obj.status in ['DECLINED', 'REJECTED']:
+            return {
+                'status': 'declined',
+                'icon': '❌',
+                'title': 'DECLINED',
+                'hours_elapsed': 0,
+                'hours_remaining': 0,
+                'hours_overdue': 0,
+                'escalation_deadline': obj.category.sla_config.escalation_hours,
+                'resolution_deadline': obj.category.sla_config.resolution_hours,
+                'hours_until_resolution': 0,
+                'is_overdue': False,
+                'priority': obj.priority,
+                'priority_text': priority_map.get(obj.priority, 'Normal'),
+                'escalation_count': obj.escalations.count(),
+            }
+        
+        # If complaint is completed or resolved, show completed status
+        if obj.status in ['COMPLETED', 'RESOLVED']:
+            # Calculate total time taken
+            hours_elapsed = (timezone.now() - obj.created_at).total_seconds() / 3600
+            
+            return {
+                'status': 'completed',
+                'icon': '✅',
+                'title': 'COMPLETED',
+                'hours_elapsed': round(hours_elapsed, 1),
+                'hours_remaining': 0,
+                'hours_overdue': 0,
+                'escalation_deadline': obj.category.sla_config.escalation_hours,
+                'resolution_deadline': obj.category.sla_config.resolution_hours,
+                'hours_until_resolution': 0,
+                'is_overdue': False,
+                'priority': obj.priority,
+                'priority_text': priority_map.get(obj.priority, 'Normal'),
+                'escalation_count': obj.escalations.count(),
+            }
+        
+        sla = obj.category.sla_config
+        hours_elapsed = (timezone.now() - obj.created_at).total_seconds() / 3600
+        hours_until_escalation = sla.escalation_hours - hours_elapsed
+        hours_until_resolution = sla.resolution_hours - hours_elapsed
+        
+        # For pending/submitted complaints (not assigned yet)
+        if obj.status in ['SUBMITTED', 'PENDING', 'FILTERING', 'SORTING']:
+            # Determine status based on time
+            if hours_until_escalation <= 0:
+                status = 'overdue'
+                icon = '⚠️'
+                title = 'PENDING - OVERDUE!'
+            elif hours_until_escalation <= 2:
+                status = 'critical'
+                icon = '🔥'
+                title = 'PENDING - URGENT'
+            elif hours_until_escalation <= 6:
+                status = 'warning'
+                icon = '⏰'
+                title = 'PENDING - Needs Attention'
+            else:
+                status = 'pending'
+                icon = '⏳'
+                title = 'PENDING'
+        # For in-progress complaints (assigned/being worked on)
+        elif obj.status in ['ASSIGNED', 'IN_PROGRESS']:
+            # Determine status based on time
+            if hours_until_escalation <= 0:
+                status = 'overdue'
+                icon = '⚠️'
+                title = 'IN PROGRESS - OVERDUE!'
+            elif hours_until_escalation <= 2:
+                status = 'critical'
+                icon = '🔥'
+                title = 'IN PROGRESS - URGENT'
+            elif hours_until_escalation <= 6:
+                status = 'warning'
+                icon = '⏰'
+                title = 'IN PROGRESS - Approaching Deadline'
+            else:
+                status = 'ok'
+                icon = '✓'
+                title = 'IN PROGRESS - On Track'
+        else:
+            # Default fallback
+            if hours_until_escalation <= 0:
+                status = 'overdue'
+                icon = '⚠️'
+                title = 'OVERDUE!'
+            elif hours_until_escalation <= 2:
+                status = 'critical'
+                icon = '🔥'
+                title = 'URGENT'
+            elif hours_until_escalation <= 6:
+                status = 'warning'
+                icon = '⏰'
+                title = 'Approaching Deadline'
+            else:
+                status = 'ok'
+                icon = '✓'
+                title = 'On Track'
+        
+        # Priority text
+        priority_map = {1: 'Normal', 2: 'High', 3: 'Critical'}
+        
+        return {
+            'status': status,
+            'icon': icon,
+            'title': title,
+            'hours_elapsed': round(hours_elapsed, 1),
+            'hours_remaining': round(max(0, hours_until_escalation), 1),
+            'hours_overdue': round(max(0, -hours_until_escalation), 1),
+            'escalation_deadline': sla.escalation_hours,
+            'resolution_deadline': sla.resolution_hours,
+            'hours_until_resolution': round(hours_until_resolution, 1),
+            'is_overdue': hours_until_escalation <= 0,
+            'priority': obj.priority,
+            'priority_text': priority_map.get(obj.priority, 'Normal'),
+            'escalation_count': obj.escalations.count(),
+        }
 
 
 class ComplaintCreateSerializer(serializers.ModelSerializer):

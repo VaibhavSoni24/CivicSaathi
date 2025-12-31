@@ -92,6 +92,11 @@ export default function ComplaintDetail() {
 
   if (!user || !complaint) return null;
 
+  const handleBackClick = (e) => {
+    e.preventDefault();
+    router.back();
+  };
+
   return (
     <div style={styles.container}>
       <Navbar />
@@ -99,12 +104,12 @@ export default function ComplaintDetail() {
       <main style={styles.main}>
         <div style={styles.content}>
           {/* Back Button */}
-          <Link href="/complaints" style={styles.backLink}>
+          <a href="#" onClick={handleBackClick} style={styles.backLink}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M19 12H5M12 19l-7-7 7-7"/>
             </svg>
-            Back to Complaints
-          </Link>
+            Back
+          </a>
 
           {/* Header */}
           <div className="card" style={styles.headerCard}>
@@ -155,6 +160,70 @@ export default function ComplaintDetail() {
               <span>{complaint.upvote_count} {complaint.upvote_count === 1 ? 'Upvote' : 'Upvotes'}</span>
             </button>
           </div>
+
+          {/* SLA Timer Display */}
+          {complaint.sla_timer && (
+            <div className="card" style={{
+              ...styles.timerCard,
+              ...(complaint.sla_timer.status === 'completed' ? styles.timerCompleted :
+                  complaint.sla_timer.status === 'declined' ? styles.timerDeclined :
+                  complaint.sla_timer.status === 'pending' ? styles.timerPending :
+                  complaint.sla_timer.status === 'overdue' ? styles.timerOverdue :
+                  complaint.sla_timer.status === 'critical' ? styles.timerCritical :
+                  complaint.sla_timer.status === 'warning' ? styles.timerWarning :
+                  styles.timerOk)
+            }}>
+              <div style={styles.timerHeader}>
+                <span style={styles.timerIcon}>{complaint.sla_timer.icon}</span>
+                <h3 style={styles.timerTitle}>{complaint.sla_timer.title}</h3>
+                <span style={{
+                  ...styles.priorityBadge,
+                  backgroundColor: complaint.sla_timer.priority === 3 ? '#dc2626' : 
+                                   complaint.sla_timer.priority === 2 ? '#ea580c' : '#3b82f6'
+                }}>
+                  {complaint.sla_timer.priority_text}
+                </span>
+              </div>
+              
+              {/* Hide timer stats for declined complaints */}
+              {complaint.sla_timer.status !== 'declined' && (
+                <div style={styles.timerStats}>
+                  <div style={styles.timerStat}>
+                    <div style={styles.timerStatLabel}>
+                      {complaint.sla_timer.status === 'completed' ? 'Total Time' : 'Time Elapsed'}
+                    </div>
+                    <div style={styles.timerStatValue}>{complaint.sla_timer.hours_elapsed}h</div>
+                  </div>
+                  {complaint.sla_timer.status !== 'completed' && (
+                    <div style={styles.timerStat}>
+                      <div style={styles.timerStatLabel}>
+                        {complaint.sla_timer.is_overdue ? 'Overdue By' : 'Time Remaining'}
+                      </div>
+                      <div style={styles.timerStatValue}>
+                        {complaint.sla_timer.is_overdue ? 
+                          complaint.sla_timer.hours_overdue : 
+                          complaint.sla_timer.hours_remaining}h
+                      </div>
+                    </div>
+                  )}
+                  <div style={styles.timerStat}>
+                    <div style={styles.timerStatLabel}>SLA Deadline</div>
+                    <div style={styles.timerStatValue}>{complaint.sla_timer.escalation_deadline}h</div>
+                  </div>
+                  <div style={styles.timerStat}>
+                    <div style={styles.timerStatLabel}>Resolution Target</div>
+                    <div style={styles.timerStatValue}>{complaint.sla_timer.resolution_deadline}h</div>
+                  </div>
+                </div>
+              )}
+
+              {complaint.sla_timer.escalation_count > 0 && (
+                <div style={styles.escalationWarning}>
+                  ⚠️ This complaint has been escalated {complaint.sla_timer.escalation_count} time(s)
+                </div>
+              )}
+            </div>
+          )}
 
           <div style={styles.grid}>
             {/* Left Column */}
@@ -479,5 +548,103 @@ const styles = {
     padding: '0.5rem 0.75rem',
     backgroundColor: 'var(--bg-secondary)',
     borderRadius: 'var(--radius-sm)',
+  },
+  // Timer styles
+  timerCard: {
+    marginBottom: '1.5rem',
+    padding: '1.5rem',
+    borderRadius: '12px',
+    border: '2px solid',
+    transition: 'all 0.3s ease',
+    backgroundColor: 'var(--bg-secondary)',
+  },
+  timerCompleted: {
+    borderColor: '#10b981',
+    boxShadow: '0 0 20px rgba(16, 185, 129, 0.2)',
+  },
+  timerDeclined: {
+    borderColor: '#6b7280',
+    boxShadow: '0 0 20px rgba(107, 114, 128, 0.15)',
+  },
+  timerPending: {
+    borderColor: '#3b82f6',
+    boxShadow: '0 0 20px rgba(59, 130, 246, 0.15)',
+  },
+  timerOverdue: {
+    borderColor: '#dc2626',
+    boxShadow: '0 0 20px rgba(220, 38, 38, 0.15)',
+  },
+  timerCritical: {
+    borderColor: '#ea580c',
+    boxShadow: '0 0 20px rgba(234, 88, 12, 0.15)',
+  },
+  timerWarning: {
+    borderColor: '#eab308',
+    boxShadow: '0 0 20px rgba(234, 179, 8, 0.15)',
+  },
+  timerOk: {
+    borderColor: '#10b981',
+    boxShadow: '0 0 20px rgba(16, 185, 129, 0.15)',
+  },
+  timerHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '1rem',
+    marginBottom: '1.5rem',
+  },
+  timerIcon: {
+    fontSize: '2rem',
+  },
+  timerTitle: {
+    fontSize: '1.25rem',
+    fontWeight: '700',
+    flex: 1,
+    margin: 0,
+    color: 'var(--text-primary)',
+  },
+  priorityBadge: {
+    padding: '0.375rem 0.875rem',
+    borderRadius: '1rem',
+    fontSize: '0.75rem',
+    fontWeight: '700',
+    color: 'white',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+  },
+  timerStats: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+    gap: '1rem',
+  },
+  timerStat: {
+    textAlign: 'center',
+    padding: '0.75rem',
+    backgroundColor: 'var(--bg-primary)',
+    borderRadius: '8px',
+    border: '1px solid var(--border-primary)',
+  },
+  timerStatLabel: {
+    fontSize: '0.75rem',
+    fontWeight: '600',
+    color: 'var(--text-secondary)',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    marginBottom: '0.5rem',
+  },
+  timerStatValue: {
+    fontSize: '1.5rem',
+    fontWeight: '700',
+    color: 'var(--text-primary)',
+  },
+  escalationWarning: {
+    marginTop: '1rem',
+    padding: '0.75rem 1rem',
+    backgroundColor: 'rgba(220, 38, 38, 0.1)',
+    border: '1px solid rgba(220, 38, 38, 0.3)',
+    borderRadius: '8px',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    color: '#dc2626',
+    textAlign: 'center',
   },
 };

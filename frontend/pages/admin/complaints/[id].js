@@ -227,6 +227,60 @@ export default function ComplaintDetail() {
               Back to Complaints
             </button>
 
+            {/* SLA Timer Display */}
+            {complaint.sla_timer && (
+              <div style={{
+                ...styles.timerCard,
+                ...(complaint.sla_timer.status === 'overdue' ? styles.timerOverdue :
+                    complaint.sla_timer.status === 'critical' ? styles.timerCritical :
+                    complaint.sla_timer.status === 'warning' ? styles.timerWarning :
+                    styles.timerOk)
+              }}>
+                <div style={styles.timerHeader}>
+                  <span style={styles.timerIcon}>{complaint.sla_timer.icon}</span>
+                  <h3 style={styles.timerTitle}>{complaint.sla_timer.title}</h3>
+                  <span style={{
+                    ...styles.priorityBadge,
+                    backgroundColor: complaint.sla_timer.priority === 3 ? '#dc2626' : 
+                                     complaint.sla_timer.priority === 2 ? '#ea580c' : '#3b82f6'
+                  }}>
+                    {complaint.sla_timer.priority_text}
+                  </span>
+                </div>
+                
+                <div style={styles.timerStats}>
+                  <div style={styles.timerStat}>
+                    <div style={styles.timerStatLabel}>Time Elapsed</div>
+                    <div style={styles.timerStatValue}>{complaint.sla_timer.hours_elapsed}h</div>
+                  </div>
+                  <div style={styles.timerStat}>
+                    <div style={styles.timerStatLabel}>
+                      {complaint.sla_timer.is_overdue ? 'Overdue By' : 'Time Remaining'}
+                    </div>
+                    <div style={styles.timerStatValue}>
+                      {complaint.sla_timer.is_overdue ? 
+                        complaint.sla_timer.hours_overdue : 
+                        complaint.sla_timer.hours_remaining}h
+                    </div>
+                  </div>
+                  <div style={styles.timerStat}>
+                    <div style={styles.timerStatLabel}>SLA Deadline</div>
+                    <div style={styles.timerStatValue}>{complaint.sla_timer.escalation_deadline}h</div>
+                  </div>
+                  <div style={styles.timerStat}>
+                    <div style={styles.timerStatLabel}>Resolution Target</div>
+                    <div style={styles.timerStatValue}>{complaint.sla_timer.resolution_deadline}h</div>
+                  </div>
+                </div>
+
+                {complaint.sla_timer.escalation_count > 0 && (
+                  <div style={styles.escalationWarning}>
+                    ⚠️ This complaint has been escalated {complaint.sla_timer.escalation_count} time(s)
+                  </div>
+                )}
+              </div>
+            )}
+
             <div style={styles.grid}>
               {/* Left Column - Complaint Details */}
               <div style={styles.leftColumn}>
@@ -567,5 +621,20 @@ const styles = {
   modalActions: { display: 'flex', gap: '12px', justifyContent: 'flex-end' },
   cancelButton: { padding: '10px 20px', background: 'var(--bg-tertiary)', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontSize: '14px', fontWeight: '500', color: 'var(--text-primary)' },
   confirmButton: { padding: '10px 20px', background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)', color: 'white', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontSize: '14px', fontWeight: '500', boxShadow: '0 2px 8px rgba(79, 70, 229, 0.3)' },
-  errorContainer: { padding: '60px 20px', textAlign: 'center', color: 'var(--text-secondary)' }
+  errorContainer: { padding: '60px 20px', textAlign: 'center', color: 'var(--text-secondary)' },
+  // Timer styles
+  timerCard: { marginBottom: '20px', padding: '24px', borderRadius: '12px', border: '2px solid', transition: 'all 0.3s ease' },
+  timerOverdue: { background: 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)', borderColor: '#dc2626' },
+  timerCritical: { background: 'linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%)', borderColor: '#ea580c' },
+  timerWarning: { background: 'linear-gradient(135deg, #fefce8 0%, #fef08a 100%)', borderColor: '#eab308' },
+  timerOk: { background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)', borderColor: '#10b981' },
+  timerHeader: { display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' },
+  timerIcon: { fontSize: '32px' },
+  timerTitle: { fontSize: '20px', fontWeight: '700', flex: 1, margin: 0 },
+  priorityBadge: { padding: '6px 14px', borderRadius: '16px', fontSize: '12px', fontWeight: '700', color: 'white', textTransform: 'uppercase', letterSpacing: '0.05em' },
+  timerStats: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' },
+  timerStat: { textAlign: 'center', padding: '12px', background: 'rgba(255, 255, 255, 0.6)', borderRadius: '8px' },
+  timerStatLabel: { fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' },
+  timerStatValue: { fontSize: '24px', fontWeight: '700', color: '#1e293b' },
+  escalationWarning: { marginTop: '16px', padding: '12px 16px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', fontSize: '14px', fontWeight: '600', color: '#dc2626', textAlign: 'center' }
 };

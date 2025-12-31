@@ -1,0 +1,150 @@
+{% extends "admin/change_form.html" %}
+{% load static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    .sla-timer-box {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 10px;
+        margin: 20px 0;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    .sla-timer-box.overdue {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        animation: pulse 2s infinite;
+    }
+    
+    .sla-timer-box.warning {
+        background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+    }
+    
+    .sla-timer-box.ok {
+        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        color: #333;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.8; }
+    }
+    
+    .timer-header {
+        font-size: 24px;
+        font-weight: bold;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .timer-content {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-top: 15px;
+    }
+    
+    .timer-stat {
+        background: rgba(255,255,255,0.2);
+        padding: 15px;
+        border-radius: 8px;
+        backdrop-filter: blur(10px);
+    }
+    
+    .timer-stat-label {
+        font-size: 12px;
+        opacity: 0.9;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .timer-stat-value {
+        font-size: 28px;
+        font-weight: bold;
+    }
+    
+    .timer-icon {
+        font-size: 32px;
+        animation: rotate 3s linear infinite;
+    }
+    
+    @keyframes rotate {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .priority-badge {
+        display: inline-block;
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-weight: bold;
+        font-size: 14px;
+    }
+    
+    .priority-high {
+        background: #ff6b6b;
+        color: white;
+    }
+    
+    .priority-normal {
+        background: #4ecdc4;
+        color: white;
+    }
+    
+    .priority-critical {
+        background: #ff0000;
+        color: white;
+        animation: blink 1s infinite;
+    }
+    
+    @keyframes blink {
+        0%, 50%, 100% { opacity: 1; }
+        25%, 75% { opacity: 0.5; }
+    }
+</style>
+{% endblock %}
+
+{% block after_field_sets %}
+{% if original %}
+<div class="sla-timer-box {{ timer_status }}">
+    <div class="timer-header">
+        <span class="timer-icon">{{ timer_icon }}</span>
+        <span>{{ timer_title }}</span>
+    </div>
+    <div class="timer-content">
+        <div class="timer-stat">
+            <div class="timer-stat-label">Time Elapsed</div>
+            <div class="timer-stat-value">{{ hours_elapsed }}h</div>
+        </div>
+        <div class="timer-stat">
+            <div class="timer-stat-label">{{ deadline_label }}</div>
+            <div class="timer-stat-value">{{ hours_remaining }}h</div>
+        </div>
+        <div class="timer-stat">
+            <div class="timer-stat-label">SLA Deadline</div>
+            <div class="timer-stat-value">{{ sla_hours }}h</div>
+        </div>
+        <div class="timer-stat">
+            <div class="timer-stat-label">Priority</div>
+            <div class="priority-badge priority-{{ priority_class }}">{{ priority_text }}</div>
+        </div>
+    </div>
+    {% if is_overdue %}
+    <div style="margin-top: 15px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 5px;">
+        <strong>⚠️ ACTION REQUIRED:</strong> This complaint has exceeded its SLA deadline. 
+        {% if not escalated %}
+        It will be auto-escalated in the next escalation run.
+        {% else %}
+        This complaint has been escalated {{ escalation_count }} time(s).
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+{{ block.super }}
+{% endblock %}

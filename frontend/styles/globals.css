@@ -385,6 +385,18 @@ a {
   100% { transform: rotate(360deg); }
 }
 
+/* SLA Timer Pulse Animation */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.01);
+  }
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .grid-cols-2,

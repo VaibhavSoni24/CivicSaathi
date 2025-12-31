@@ -22,7 +22,8 @@ export default function AdminDashboard() {
   const fetchDashboardData = async () => {
     try {
       // Fetch all complaints and calculate stats on frontend
-      const response = await adminDashboardAPI.getOverallStats().catch(() => {
+      const response = await adminDashboardAPI.getOverallStats().catch((err) => {
+        console.log('Dashboard API not available, using fallback:', err.message);
         // Fallback to complaints API if dashboard API fails
         return { data: null };
       });
@@ -62,11 +63,11 @@ export default function AdminDashboard() {
         // Calculate stats
         const calculatedStats = {
           total_complaints: filteredComplaints.length,
-          pending: filteredComplaints.filter(c => c.status === 'PENDING').length,
-          in_process: filteredComplaints.filter(c => c.status === 'IN_PROCESS').length,
+          pending: filteredComplaints.filter(c => c.status === 'PENDING' || c.status === 'SUBMITTED').length,
+          in_progress: filteredComplaints.filter(c => c.status === 'IN_PROGRESS' || c.status === 'ASSIGNED').length,
           completed: filteredComplaints.filter(c => c.status === 'COMPLETED').length,
-          solved: filteredComplaints.filter(c => c.status === 'SOLVED').length,
-          rejected: filteredComplaints.filter(c => c.status === 'REJECTED').length
+          resolved: filteredComplaints.filter(c => c.status === 'RESOLVED').length,
+          rejected: filteredComplaints.filter(c => c.status === 'REJECTED' || c.status === 'DECLINED').length
         };
         
         setStats(calculatedStats);
@@ -77,9 +78,9 @@ export default function AdminDashboard() {
       setStats({
         total_complaints: 0,
         pending: 0,
-        in_process: 0,
+        in_progress: 0,
         completed: 0,
-        solved: 0,
+        resolved: 0,
         rejected: 0
       });
     } finally {
@@ -149,15 +150,15 @@ export default function AdminDashboard() {
                 bgColor="rgba(245, 158, 11, 0.1)"
               />
               <StatCard
-                title="In Process"
-                value={stats?.in_process || 0}
+                title="In Progress"
+                value={stats?.in_progress || 0}
                 icon="⚙️"
                 color="#8b5cf6"
                 bgColor="rgba(139, 92, 246, 0.1)"
               />
               <StatCard
                 title="Completed/Resolved"
-                value={(stats?.completed || 0) + (stats?.solved || 0)}
+                value={(stats?.completed || 0) + (stats?.resolved || 0)}
                 icon="✅"
                 color="#10b981"
                 bgColor="rgba(16, 185, 129, 0.1)"

@@ -132,7 +132,7 @@ class Office(models.Model):
     email = models.EmailField()
     office_hours = models.CharField(max_length=100, default='9:00 AM - 5:00 PM')
     is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
@@ -342,7 +342,7 @@ class ComplaintLog(models.Model):
     
 
 class ComplaintEscalation(models.Model):
-    complaint = models.ForeignKey(Complaint, on_delete=models.CASCADE)
+    complaint = models.ForeignKey(Complaint, on_delete=models.CASCADE, related_name='escalations')
     escalated_from = models.ForeignKey(
         Officer, on_delete=models.SET_NULL, null=True, related_name="escalated_from"
     )
@@ -351,6 +351,36 @@ class ComplaintEscalation(models.Model):
     )
     reason = models.CharField(max_length=255)
     escalated_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"Escalation for Complaint {self.complaint.id} at {self.escalated_at}"
+
+
+# -------------------------
+# SLA Configuration
+# -------------------------
+class SLAConfig(models.Model):
+    """Service Level Agreement configuration for complaint categories"""
+    category = models.OneToOneField(
+        ComplaintCategory,
+        on_delete=models.CASCADE,
+        related_name='sla_config'
+    )
+    resolution_hours = models.PositiveIntegerField(
+        default=48,
+        help_text="Expected hours to resolve this type of complaint"
+    )
+    escalation_hours = models.PositiveIntegerField(
+        default=24,
+        help_text="Hours before auto-escalation if not resolved"
+    )
+    
+    class Meta:
+        verbose_name = "SLA Configuration"
+        verbose_name_plural = "SLA Configurations"
+    
+    def __str__(self):
+        return f"SLA for {self.category.name} - Resolve in {self.resolution_hours}h, Escalate after {self.escalation_hours}h"
 
 
 # -------------------------

@@ -248,8 +248,8 @@ export const adminAttendanceAPI = {
 
 // Admin Dashboard API
 export const adminDashboardAPI = {
-  // Get overall statistics (Root Admin)
-  getOverallStats: () => adminApi.get('/admin/dashboard/stats/'),
+  // Get overall statistics (Root Admin) - using regular dashboard endpoint
+  getOverallStats: () => adminApi.get('/dashboard/stats/'),
   
   // Get cluster statistics (Sub-Admin)
   getClusterStats: (clusterId) => 

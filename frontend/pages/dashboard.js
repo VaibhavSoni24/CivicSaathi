@@ -28,7 +28,7 @@ export default function Dashboard() {
       ]);
       setStats(statsResponse.data);
       const data = complaintsResponse.data.results || complaintsResponse.data;
-      setRecentComplaints(Array.isArray(data) ? data.slice(0, 5) : []);
+      setRecentComplaints(Array.isArray(data) ? data.slice(0, 4) : []);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
@@ -74,56 +74,82 @@ export default function Dashboard() {
           {/* Stats Cards */}
           {stats && (
             <div style={styles.statsGrid}>
-              <div className="card" style={styles.statCard}>
-                <div style={styles.statIcon} className="badge-info">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M9 11l3 3L22 4"></path>
-                    <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"></path>
-                  </svg>
+              <Link href="/complaints/all" style={{ textDecoration: 'none' }}>
+                <div className="card" style={{...styles.statCard, cursor: 'pointer'}}>
+                  <div style={styles.statIcon} className="badge-info">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M9 11l3 3L22 4"></path>
+                      <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"></path>
+                    </svg>
+                  </div>
+                  <div>
+                    <p style={styles.statLabel}>Total Complaints</p>
+                    <h2 style={styles.statValue}>{stats.total_complaints || 0}</h2>
+                  </div>
                 </div>
-                <div>
-                  <p style={styles.statLabel}>Total Complaints</p>
-                  <h2 style={styles.statValue}>{stats.total_complaints}</h2>
-                </div>
-              </div>
+              </Link>
 
-              <div className="card" style={styles.statCard}>
-                <div style={styles.statIcon} className="badge-warning">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <polyline points="12 6 12 12 16 14"></polyline>
-                  </svg>
+              <Link href="/complaints/status/pending" style={{ textDecoration: 'none' }}>
+                <div className="card" style={{...styles.statCard, cursor: 'pointer'}}>
+                  <div style={styles.statIcon} className="badge-warning">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                  </div>
+                  <div>
+                    <p style={styles.statLabel}>Pending</p>
+                    <h2 style={styles.statValue}>{stats.pending || 0}</h2>
+                  </div>
                 </div>
-                <div>
-                  <p style={styles.statLabel}>Pending</p>
-                  <h2 style={styles.statValue}>{stats.pending}</h2>
-                </div>
-              </div>
+              </Link>
 
-              <div className="card" style={styles.statCard}>
-                <div style={styles.statIcon} className="badge-primary">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M12 20h9"></path>
-                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-                  </svg>
+              <Link href="/complaints/status/in-progress" style={{ textDecoration: 'none' }}>
+                <div className="card" style={{...styles.statCard, cursor: 'pointer'}}>
+                  <div style={styles.statIcon} className="badge-primary">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 20h9"></path>
+                      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                    </svg>
+                  </div>
+                  <div>
+                    <p style={styles.statLabel}>In Progress</p>
+                    <h2 style={styles.statValue}>{stats.in_progress || 0}</h2>
+                  </div>
                 </div>
-                <div>
-                  <p style={styles.statLabel}>In Progress</p>
-                  <h2 style={styles.statValue}>{stats.in_progress}</h2>
-                </div>
-              </div>
+              </Link>
 
-              <div className="card" style={styles.statCard}>
-                <div style={styles.statIcon} className="badge-success">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                  </svg>
+              <Link href="/complaints/status/completed" style={{ textDecoration: 'none' }}>
+                <div className="card" style={{...styles.statCard, cursor: 'pointer'}}>
+                  <div style={styles.statIcon} className="badge-success">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  </div>
+                  <div>
+                    <p style={styles.statLabel}>Completed</p>
+                    <h2 style={styles.statValue}>{stats.completed || 0}</h2>
+                  </div>
                 </div>
-                <div>
-                  <p style={styles.statLabel}>Completed</p>
-                  <h2 style={styles.statValue}>{stats.completed}</h2>
-                </div>
-              </div>
+              </Link>
+
+              {stats.declined !== undefined && stats.declined > 0 && (
+                <Link href="/complaints/status/declined" style={{ textDecoration: 'none' }}>
+                  <div className="card" style={{...styles.statCard, cursor: 'pointer'}}>
+                    <div style={styles.statIcon} className="badge-danger">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="15" y1="9" x2="9" y2="15"></line>
+                        <line x1="9" y1="9" x2="15" y2="15"></line>
+                      </svg>
+                    </div>
+                    <div>
+                      <p style={styles.statLabel}>Declined/Rejected</p>
+                      <h2 style={styles.statValue}>{stats.declined}</h2>
+                    </div>
+                  </div>
+                </Link>
+              )}
             </div>
           )}
 
@@ -169,7 +195,7 @@ export default function Dashboard() {
           <div style={styles.section}>
             <div style={styles.sectionHeader}>
               <h2 style={styles.sectionTitle}>Recent Complaints</h2>
-              <Link href="/complaints" style={styles.viewAllLink}>
+              <Link href="/complaints/all" style={styles.viewAllLink}>
                 View All →
               </Link>
             </div>
@@ -180,21 +206,31 @@ export default function Dashboard() {
                   <Link href={`/complaints/${complaint.id}`} key={complaint.id}>
                     <div className="card" style={styles.complaintCard}>
                       <div style={styles.complaintHeader}>
-                        <h3 style={styles.complaintTitle}>{complaint.title}</h3>
+                        <h3 style={styles.complaintTitle}>
+                          {complaint.title}
+                          {!complaint.image && (
+                            <span style={styles.demoLabel}>(demo)</span>
+                          )}
+                        </h3>
                         <span className={`badge badge-${getStatusColor(complaint.status)}`}>
                           {complaint.status}
                         </span>
                       </div>
                       <p style={styles.complaintDesc}>
-                        {complaint.description.substring(0, 100)}...
+                        {complaint.description?.substring(0, 100) || 'No description available'}...
                       </p>
                       <div style={styles.complaintFooter}>
                         <span style={styles.complaintLocation}>
-                          📍 {complaint.city}
+                          📍 {complaint.city || 'Unknown'}
                         </span>
                         <span style={styles.complaintDate}>
                           {new Date(complaint.created_at).toLocaleDateString()}
                         </span>
+                        {complaint.upvote_count > 0 && (
+                          <span style={styles.complaintUpvotes}>
+                            👍 {complaint.upvote_count}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </Link>
@@ -362,6 +398,15 @@ const styles = {
     fontSize: '1.125rem',
     fontWeight: '600',
     flex: 1,
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+  },
+  demoLabel: {
+    fontSize: '0.75rem',
+    fontWeight: '400',
+    color: 'var(--text-muted)',
+    fontStyle: 'italic',
   },
   complaintDesc: {
     color: 'var(--text-secondary)',
@@ -371,12 +416,21 @@ const styles = {
   },
   complaintFooter: {
     display: 'flex',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     alignItems: 'center',
+    gap: '1rem',
     fontSize: '0.75rem',
     color: 'var(--text-muted)',
   },
   complaintLocation: {
+    display: 'flex',
+    alignItems: 'center',
+  },
+  complaintDate: {
+    display: 'flex',
+    alignItems: 'center',
+  },
+  complaintUpvotes: {
     display: 'flex',
     alignItems: 'center',
     gap: '0.25rem',

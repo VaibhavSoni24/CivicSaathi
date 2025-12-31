@@ -200,20 +200,20 @@ class AllComplaintsView(generics.ListAPIView):
         # Check if admin headers are present
         is_admin = self.request.headers.get('X-Admin-Token') or self.request.headers.get('X-Admin-User')
         
+        # Show all non-deleted complaints (including demo complaints that haven't been filtered)
         queryset = Complaint.objects.filter(
-            is_deleted=False,
-            filter_passed=True
+            is_deleted=False
         )
         
         # If admin, return all complaints without filtering
         if is_admin:
             return queryset.order_by('-created_at')
         
-        # For regular users, filter by location
+        # For regular users, filter by location (optional - show all if no filters)
         user = self.request.user if self.request.user.is_authenticated else None
         if user:
-            city = self.request.query_params.get('city', user.city)
-            state = self.request.query_params.get('state', user.state)
+            city = self.request.query_params.get('city', None)  # Don't auto-filter by user's city
+            state = self.request.query_params.get('state', None)
         else:
             city = self.request.query_params.get('city')
             state = self.request.query_params.get('state')
@@ -223,9 +223,8 @@ class AllComplaintsView(generics.ListAPIView):
         if state:
             queryset = queryset.filter(state__icontains=state)
         
-        return queryset.annotate(
-            vote_count=Count('votes')
-        ).order_by('-priority', '-upvote_count', '-created_at')
+        # Always order by most recent first
+        return queryset.order_by('-created_at')
     
     def list(self, request, *args, **kwargs):
         """Override to ensure proper response format"""
@@ -722,11 +721,21 @@ def dashboard_stats(request):
     stats = {}
     
     if user.user_type == 'CITIZEN':
+        # Show all system complaints for citizens (not just their own)
+        all_complaints = Complaint.objects.filter(is_deleted=False)
+        user_complaints = Complaint.objects.filter(user=user, is_deleted=False)
+        
         stats = {
-            'total_complaints': Complaint.objects.filter(user=user, is_deleted=False).count(),
-            'pending': Complaint.objects.filter(user=user, status='PENDING', is_deleted=False).count(),
-            'in_progress': Complaint.objects.filter(user=user, status__in=['ASSIGNED', 'IN_PROGRESS'], is_deleted=False).count(),
-            'completed': Complaint.objects.filter(user=user, status='COMPLETED', is_deleted=False).count(),
+            'total_complaints': all_complaints.count(),
+            'pending': all_complaints.filter(status__in=['SUBMITTED', 'PENDING', 'FILTERING', 'SORTING']).count(),
+            'in_progress': all_complaints.filter(status__in=['ASSIGNED', 'IN_PROGRESS']).count(),
+            'completed': all_complaints.filter(status__in=['COMPLETED', 'RESOLVED']).count(),
+            'declined': all_complaints.filter(status__in=['DECLINED', 'REJECTED']).count(),
+            # Also include personal stats
+            'my_complaints': user_complaints.count(),
+            'my_pending': user_complaints.filter(status__in=['SUBMITTED', 'PENDING', 'FILTERING', 'SORTING']).count(),
+            'my_in_progress': user_complaints.filter(status__in=['ASSIGNED', 'IN_PROGRESS']).count(),
+            'my_completed': user_complaints.filter(status__in=['COMPLETED', 'RESOLVED']).count(),
         }
     
     elif user.user_type == 'DEPT_ADMIN' and hasattr(user, 'departmentadminprofile'):
