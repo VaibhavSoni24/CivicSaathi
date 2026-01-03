@@ -128,6 +128,9 @@ class ComplaintVoteSerializer(serializers.ModelSerializer):
 
 class ComplaintSerializer(serializers.ModelSerializer):
     user_username = serializers.CharField(source='user.username', read_only=True)
+    user_first_name = serializers.CharField(source='user.first_name', read_only=True)
+    user_last_name = serializers.CharField(source='user.last_name', read_only=True)
+    user_email = serializers.CharField(source='user.email', read_only=True)
     category_name = serializers.CharField(source='category.name', read_only=True)
     department_name = serializers.CharField(source='department.name', read_only=True)
     office_name = serializers.CharField(source='office.name', read_only=True, allow_null=True)
@@ -290,7 +293,7 @@ class ComplaintSerializer(serializers.ModelSerializer):
 class ComplaintCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Complaint
-        fields = ('title', 'description', 'category', 'location', 'latitude', 
+        fields = ('title', 'description', 'department', 'location', 'latitude', 
                   'longitude', 'city', 'state', 'image')
     
     def create(self, validated_data):

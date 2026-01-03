@@ -365,7 +365,11 @@ export default function ComplaintDetail() {
                       <MetaItem icon="🏢" label="Department" value={complaint.department_name || 'N/A'} />
                       <MetaItem icon="🏫" label="Office" value={complaint.office_name || 'Not assigned'} />
                       <MetaItem icon="📅" label="Submitted on" value={new Date(complaint.created_at).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} />
-                      <MetaItem icon="👤" label="Citizen" value={complaint.citizen_name || complaint.citizen_email || 'Anonymous'} />
+                      <MetaItem icon="👤" label="Citizen" value={
+                        complaint.user_first_name && complaint.user_last_name 
+                          ? `${complaint.user_first_name} ${complaint.user_last_name} (${complaint.user_username})`
+                          : complaint.user_username || 'Anonymous'
+                      } />
                       <MetaItem icon="👍" label="Upvotes" value={complaint.upvote_count || 0} />
                       <MetaItem icon="👷" label="Worker Assigned" value={complaint.current_worker_name || 'Not assigned'} />
                     </div>

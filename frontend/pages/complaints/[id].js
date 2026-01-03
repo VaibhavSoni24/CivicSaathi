@@ -141,7 +141,7 @@ export default function ComplaintDetail() {
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2">
                   <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
                 </svg>
-                <span>{complaint.category_name}</span>
+                <span>{complaint.department_name || 'N/A'}</span>
               </div>
             </div>
 
