@@ -195,6 +195,7 @@ class Complaint(models.Model):
         ('SUBMITTED', 'Submitted'),
         ('FILTERING', 'Under Filter Check'),
         ('DECLINED', 'Declined'),
+        ('VERIFIED', 'Verified'),
         ('SORTING', 'Being Sorted'),
         ('PENDING', 'Pending Assignment'),
         ('ASSIGNED', 'Assigned to Worker'),

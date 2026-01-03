@@ -371,10 +371,8 @@ def assign_to_worker(request, pk):
     
     complaint.save()
     
-    # Log the action - handle anonymous users
-    action_user = None
-    if request.user and request.user.is_authenticated:
-        action_user = request.user
+    # Log the action - use get_action_user helper
+    action_user = get_action_user(request)
     
     ComplaintLog.objects.create(
         complaint=complaint,
@@ -390,33 +388,46 @@ def assign_to_worker(request, pk):
 
 
 @api_view(['POST'])
-@authentication_classes([])
 @permission_classes([AllowAny])
 def verify_complaint(request, pk):
     """Verify a complaint as genuine"""
-    complaint = get_object_or_404(Complaint, pk=pk)
-    
-    old_status = complaint.status
-    complaint.is_genuine = True
-    complaint.filter_passed = True
-    complaint.filter_checked = True
-    complaint.status = 'PENDING'
-    complaint.save()
-    
-    # Log the action - handle anonymous users
-    action_user = None
-    if request.user and request.user.is_authenticated:
-        action_user = request.user
-    
-    ComplaintLog.objects.create(
-        complaint=complaint,
-        action_by=action_user,
-        note="Complaint verified as genuine",
-        old_status=old_status,
-        new_status='PENDING'
-    )
-    
-    return Response({'message': 'Complaint verified successfully'})
+    try:
+        complaint = get_object_or_404(Complaint, pk=pk)
+        
+        old_status = complaint.status
+        
+        # Mark as genuine and verified
+        complaint.is_genuine = True
+        complaint.filter_passed = True
+        complaint.filter_checked = True
+        complaint.is_spam = False
+        complaint.status = 'VERIFIED'
+        
+        complaint.save()
+        
+        # Log the action - use get_action_user helper
+        action_user = get_action_user(request)
+        
+        ComplaintLog.objects.create(
+            complaint=complaint,
+            action_by=action_user,
+            note="Complaint verified as genuine by admin",
+            old_status=old_status,
+            new_status=complaint.status
+        )
+        
+        return Response({
+            'message': 'Complaint verified successfully',
+            'status': complaint.status,
+            'is_genuine': complaint.is_genuine
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return Response(
+            {'error': f'Failed to verify complaint: {str(e)}'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
 @api_view(['POST'])

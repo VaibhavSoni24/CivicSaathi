@@ -103,11 +103,13 @@ export default function ComplaintDetail() {
     
     setProcessing(true);
     try {
-      await adminComplaintAPI.verifyComplaint(id, { verified: true });
-      alert('Complaint verified successfully');
-      fetchComplaintDetail();
+      const response = await adminComplaintAPI.verifyComplaint(id, { verified: true });
+      console.log('Verify response:', response.data);
+      alert(`Complaint verified successfully! Status: ${response.data.status || 'Updated'}`);
+      await fetchComplaintDetail();
     } catch (error) {
-      alert('Failed to verify complaint');
+      console.error('Verification error:', error);
+      alert(`Failed to verify complaint: ${error.response?.data?.error || error.message}`);
     } finally {
       setProcessing(false);
     }
@@ -141,12 +143,15 @@ export default function ComplaintDetail() {
 
     setProcessing(true);
     try {
-      await adminComplaintAPI.assignToWorker(id, selectedWorker, actionNotes);
+      const response = await adminComplaintAPI.assignToWorker(id, selectedWorker, actionNotes);
+      console.log('Assignment response:', response);
       alert('Complaint assigned successfully');
       setShowAssignModal(false);
-      fetchComplaintDetail();
+      await fetchComplaintDetail();
     } catch (error) {
-      alert('Failed to assign complaint');
+      console.error('Assignment error:', error);
+      console.error('Error response:', error.response);
+      alert(`Failed to assign complaint: ${error.response?.data?.error || error.message}`);
     } finally {
       setProcessing(false);
       setSelectedWorker('');
