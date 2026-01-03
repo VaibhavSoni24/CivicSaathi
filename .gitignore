@@ -18,6 +18,13 @@ ENV/
 env.bak/
 venv.bak/
 
+# Django generated files
+media/
+staticfiles/
+static/
+*.log
+local_settings.py
+
 # Node.js / Next.js (LARGE)
 node_modules/
 npm-debug.log*
