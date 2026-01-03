@@ -1,12 +1,21 @@
-Django>=4.2
-djangorestframework>=3.14
-Faker>=19.0
-django-jazzmin
-psycopg[binary]
-Pillow
-django-cors-headers
-transformers
-torch
-torchvision
-pillow
+# Core Django
+Django>=4.2,<5.0
+djangorestframework>=3.14.0
+django-cors-headers>=4.3.0
+django-jazzmin>=2.6.0
+
+# Authentication
+django-rest-authtoken>=2.1.4
+
+# Database
+psycopg[binary]>=3.1.0
+
+# Image handling
+Pillow>=10.0.0
+
+# Environment variables
 python-dotenv>=1.0.0
+
+# Utilities
+Faker>=19.0.0
+pytz>=2023.3
