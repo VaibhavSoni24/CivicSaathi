@@ -301,65 +301,80 @@ export default function ComplaintDetail() {
               Back to Complaints
             </button>
 
-            {/* SLA Timer Display */}
-            {complaint.sla_timer && (
+            {/* SLA Deadline Display */}
+            {complaint.sla_deadline && (
               <div style={{
-                ...styles.timerCard,
-                ...(complaint.sla_timer.status === 'completed' ? styles.timerCompleted :
-                    complaint.sla_timer.status === 'declined' ? styles.timerDeclined :
-                    complaint.sla_timer.status === 'pending' ? styles.timerPending :
-                    complaint.sla_timer.status === 'overdue' ? styles.timerOverdue :
-                    complaint.sla_timer.status === 'critical' ? styles.timerCritical :
-                    complaint.sla_timer.status === 'warning' ? styles.timerWarning :
-                    styles.timerOk)
+                ...styles.card,
+                marginBottom: '20px',
+                padding: '24px',
+                borderRadius: '12px',
+                border: '2px solid',
+                borderColor: (() => {
+                  if (complaint.status === 'COMPLETED' || complaint.status === 'RESOLVED') return '#10b981';
+                  if (!complaint.sla_deadline) return '#6b7280';
+                  const now = new Date();
+                  const deadline = new Date(complaint.sla_deadline);
+                  const hoursLeft = (deadline - now) / (1000 * 60 * 60);
+                  if (hoursLeft < 0) return '#dc2626'; // Overdue - red
+                  if (hoursLeft < 24) return '#ea580c'; // Critical - orange
+                  if (hoursLeft < 48) return '#eab308'; // Warning - yellow
+                  return '#10b981'; // OK - green
+                })(),
+                boxShadow: '0 0 20px rgba(79, 70, 229, 0.15)'
               }}>
-                <div style={styles.timerHeader}>
-                  <span style={styles.timerIcon}>{complaint.sla_timer.icon}</span>
-                  <h3 style={styles.timerTitle}>{complaint.sla_timer.title}</h3>
-                  <span style={{
-                    ...styles.priorityBadge,
-                    backgroundColor: complaint.sla_timer.priority === 3 ? '#dc2626' : 
-                                     complaint.sla_timer.priority === 2 ? '#ea580c' : '#3b82f6'
-                  }}>
-                    {complaint.sla_timer.priority_text}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+                  <span style={{ fontSize: '32px' }}>
+                    {complaint.status === 'COMPLETED' || complaint.status === 'RESOLVED' ? '✅' : 
+                     (() => {
+                       const now = new Date();
+                       const deadline = new Date(complaint.sla_deadline);
+                       const hoursLeft = (deadline - now) / (1000 * 60 * 60);
+                       if (hoursLeft < 0) return '🚨';
+                       if (hoursLeft < 24) return '⚠️';
+                       if (hoursLeft < 48) return '⏰';
+                       return '✅';
+                     })()}
                   </span>
+                  <h3 style={{ fontSize: '20px', fontWeight: '700', flex: 1, margin: 0, color: 'var(--text-primary)' }}>
+                    {complaint.status === 'COMPLETED' || complaint.status === 'RESOLVED' ? 'Completed on Time' :
+                     (() => {
+                       const now = new Date();
+                       const deadline = new Date(complaint.sla_deadline);
+                       const hoursLeft = (deadline - now) / (1000 * 60 * 60);
+                       if (hoursLeft < 0) return 'SLA Deadline Overdue';
+                       if (hoursLeft < 24) return 'SLA Deadline Critical';
+                       if (hoursLeft < 48) return 'SLA Deadline Warning';
+                       return 'SLA Deadline Active';
+                     })()}
+                  </h3>
                 </div>
                 
-                {/* Hide timer stats for declined complaints */}
-                {complaint.sla_timer.status !== 'declined' && (
-                  <div style={styles.timerStats}>
-                    <div style={styles.timerStat}>
-                      <div style={styles.timerStatLabel}>
-                        {complaint.sla_timer.status === 'completed' ? 'Total Time' : 'Time Elapsed'}
+                {complaint.status !== 'COMPLETED' && complaint.status !== 'RESOLVED' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '16px' }}>
+                    <div style={{ textAlign: 'center', padding: '12px', backgroundColor: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-primary)' }}>
+                      <div style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
+                        {(() => {
+                          const now = new Date();
+                          const deadline = new Date(complaint.sla_deadline);
+                          const hoursLeft = (deadline - now) / (1000 * 60 * 60);
+                          return hoursLeft < 0 ? 'Overdue By' : 'Time Remaining';
+                        })()}
                       </div>
-                      <div style={styles.timerStatValue}>{complaint.sla_timer.hours_elapsed}h</div>
-                    </div>
-                    {complaint.sla_timer.status !== 'completed' && (
-                      <div style={styles.timerStat}>
-                        <div style={styles.timerStatLabel}>
-                          {complaint.sla_timer.is_overdue ? 'Overdue By' : 'Time Remaining'}
-                        </div>
-                        <div style={styles.timerStatValue}>
-                          {complaint.sla_timer.is_overdue ? 
-                            complaint.sla_timer.hours_overdue : 
-                            complaint.sla_timer.hours_remaining}h
-                        </div>
+                      <div style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)' }}>
+                        {(() => {
+                          const now = new Date();
+                          const deadline = new Date(complaint.sla_deadline);
+                          const hoursLeft = (deadline - now) / (1000 * 60 * 60);
+                          return Math.abs(Math.round(hoursLeft)) + 'h';
+                        })()}
                       </div>
-                    )}
-                    <div style={styles.timerStat}>
-                      <div style={styles.timerStatLabel}>SLA Deadline</div>
-                      <div style={styles.timerStatValue}>{complaint.sla_timer.escalation_deadline}h</div>
                     </div>
-                    <div style={styles.timerStat}>
-                      <div style={styles.timerStatLabel}>Resolution Target</div>
-                      <div style={styles.timerStatValue}>{complaint.sla_timer.resolution_deadline}h</div>
+                    <div style={{ textAlign: 'center', padding: '12px', backgroundColor: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-primary)' }}>
+                      <div style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Deadline</div>
+                      <div style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)' }}>
+                        {new Date(complaint.sla_deadline).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </div>
                     </div>
-                  </div>
-                )}
-
-                {complaint.sla_timer.escalation_count > 0 && (
-                  <div style={styles.escalationWarning}>
-                    ⚠️ This complaint has been escalated {complaint.sla_timer.escalation_count} time(s)
                   </div>
                 )}
               </div>
@@ -868,7 +883,7 @@ const styles = {
   metaItem: { display: 'flex', gap: '12px', alignItems: 'flex-start', padding: '12px', backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-primary)' },
   metaIcon: { fontSize: '22px', flexShrink: 0 },
   metaLabel: { fontSize: '11px', color: 'var(--text-secondary)', margin: '0 0 4px 0', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.5px' },
-  metaValue: { fontSize: '14px', color: 'var(--text-primary)', fontWeight: '600', margin: 0 },
+  metaValue: { fontSize: '14px', color: 'var(--text-primary)', fontWeight: '600', margin: 0, wordWrap: 'break-word', wordBreak: 'break-word' },
   description: { fontSize: '15px', color: 'var(--text-secondary)', lineHeight: '1.8', margin: 0 },
   imageContainer: { borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border-primary)', backgroundColor: 'var(--bg-tertiary)' },
   complaintImage: { width: '100%', display: 'block', objectFit: 'cover' },

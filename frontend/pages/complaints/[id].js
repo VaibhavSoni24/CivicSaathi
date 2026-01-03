@@ -111,6 +111,83 @@ export default function ComplaintDetail() {
             Back
           </a>
 
+          {/* SLA Deadline Display */}
+          {complaint.sla_deadline && (
+            <div className="card" style={{
+              marginBottom: '1.5rem',
+              padding: '1.5rem',
+              borderRadius: '12px',
+              border: '2px solid',
+              borderColor: (() => {
+                if (complaint.status === 'COMPLETED' || complaint.status === 'RESOLVED') return '#10b981';
+                const now = new Date();
+                const deadline = new Date(complaint.sla_deadline);
+                const hoursLeft = (deadline - now) / (1000 * 60 * 60);
+                if (hoursLeft < 0) return '#dc2626';
+                if (hoursLeft < 24) return '#ea580c';
+                if (hoursLeft < 48) return '#eab308';
+                return '#10b981';
+              })(),
+              boxShadow: '0 0 20px rgba(79, 70, 229, 0.15)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+                <span style={{ fontSize: '2rem' }}>
+                  {complaint.status === 'COMPLETED' || complaint.status === 'RESOLVED' ? '✅' : 
+                   (() => {
+                     const now = new Date();
+                     const deadline = new Date(complaint.sla_deadline);
+                     const hoursLeft = (deadline - now) / (1000 * 60 * 60);
+                     if (hoursLeft < 0) return '🚨';
+                     if (hoursLeft < 24) return '⚠️';
+                     if (hoursLeft < 48) return '⏰';
+                     return '✅';
+                   })()}
+                </span>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: '700', flex: 1, margin: 0, color: 'var(--text-primary)' }}>
+                  {complaint.status === 'COMPLETED' || complaint.status === 'RESOLVED' ? 'Completed on Time' :
+                   (() => {
+                     const now = new Date();
+                     const deadline = new Date(complaint.sla_deadline);
+                     const hoursLeft = (deadline - now) / (1000 * 60 * 60);
+                     if (hoursLeft < 0) return 'Resolution Overdue';
+                     if (hoursLeft < 24) return 'Resolution Critical';
+                     if (hoursLeft < 48) return 'Resolution Warning';
+                     return 'Resolution In Progress';
+                   })()}
+                </h3>
+              </div>
+              
+              {complaint.status !== 'COMPLETED' && complaint.status !== 'RESOLVED' && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem' }}>
+                  <div style={{ textAlign: 'center', padding: '0.75rem', backgroundColor: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-primary)' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
+                      {(() => {
+                        const now = new Date();
+                        const deadline = new Date(complaint.sla_deadline);
+                        const hoursLeft = (deadline - now) / (1000 * 60 * 60);
+                        return hoursLeft < 0 ? 'Overdue By' : 'Time Remaining';
+                      })()}
+                    </div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+                      {(() => {
+                        const now = new Date();
+                        const deadline = new Date(complaint.sla_deadline);
+                        const hoursLeft = (deadline - now) / (1000 * 60 * 60);
+                        return Math.abs(Math.round(hoursLeft)) + 'h';
+                      })()}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'center', padding: '0.75rem', backgroundColor: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-primary)' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Expected By</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+                      {new Date(complaint.sla_deadline).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Header */}
           <div className="card" style={styles.headerCard}>
             <div style={styles.headerTop}>
@@ -556,6 +633,9 @@ const styles = {
   detailValue: {
     fontSize: '0.875rem',
     fontWeight: '600',
+    wordWrap: 'break-word',
+    wordBreak: 'break-word',
+    textAlign: 'right',
   },
   logsList: {
     display: 'flex',
