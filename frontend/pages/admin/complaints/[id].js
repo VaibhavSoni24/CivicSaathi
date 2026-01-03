@@ -20,6 +20,7 @@ export default function ComplaintDetail() {
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState('');
   const [actionNotes, setActionNotes] = useState('');
+  const [slaHours, setSlaHours] = useState('');
   const [completionImage, setCompletionImage] = useState(null);
   const [processing, setProcessing] = useState(false);
   const [quickStatus, setQuickStatus] = useState('');
@@ -68,8 +69,23 @@ export default function ComplaintDetail() {
       const response = await adminWorkerAPI.getAll();
       const allWorkers = response.data?.results || response.data || [];
       
+      console.log('=== Worker Filtering Debug ===');
+      console.log('All workers:', allWorkers);
+      console.log('Complaint department:', complaint.department);
+      
+      // Get department ID (complaint.department might be an object or just an ID)
+      const departmentId = typeof complaint.department === 'object' ? complaint.department.id : complaint.department;
+      console.log('Department ID for filtering:', departmentId);
+      
       // Filter workers by complaint's department
-      const departmentWorkers = allWorkers.filter(w => w.department === complaint.department);
+      // Worker.department is now an object {id, name}, so we need to compare worker.department.id
+      const departmentWorkers = allWorkers.filter(w => {
+        const workerDeptId = typeof w.department === 'object' ? w.department.id : w.department;
+        console.log(`Worker ${w.id}: department=${JSON.stringify(w.department)}, deptId=${workerDeptId}, matches=${workerDeptId === departmentId}`);
+        return workerDeptId === departmentId;
+      });
+      console.log('Filtered workers:', departmentWorkers);
+      console.log('==============================');
       setWorkers(departmentWorkers);
       
       // Fetch statistics for each worker
@@ -141,9 +157,14 @@ export default function ComplaintDetail() {
       return;
     }
 
+    if (!slaHours || slaHours <= 0) {
+      alert('Please enter a valid SLA time (in hours)');
+      return;
+    }
+
     setProcessing(true);
     try {
-      const response = await adminComplaintAPI.assignToWorker(id, selectedWorker, actionNotes);
+      const response = await adminComplaintAPI.assignToWorker(id, selectedWorker, actionNotes, slaHours);
       console.log('Assignment response:', response);
       alert('Complaint assigned successfully');
       setShowAssignModal(false);
@@ -156,6 +177,7 @@ export default function ComplaintDetail() {
       setProcessing(false);
       setSelectedWorker('');
       setActionNotes('');
+      setSlaHours('');
     }
   };
 
@@ -663,6 +685,36 @@ export default function ComplaintDetail() {
                   </tbody>
                 </table>
               )}
+            </div>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: '8px', 
+                fontWeight: '600',
+                fontSize: '14px',
+                color: 'var(--text-primary)' 
+              }}>
+                SLA Time (Hours) <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <input
+                type="number"
+                min="1"
+                placeholder="Enter hours to complete (e.g., 24, 48, 72)"
+                value={slaHours}
+                onChange={(e) => setSlaHours(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  border: '1px solid var(--border-secondary)',
+                  borderRadius: 'var(--radius-md)',
+                  fontSize: '14px',
+                  backgroundColor: 'var(--bg-tertiary)',
+                  color: 'var(--text-primary)',
+                  boxSizing: 'border-box',
+                  outline: 'none'
+                }}
+                required
+              />
             </div>
             <textarea
               placeholder="Additional notes (optional)"

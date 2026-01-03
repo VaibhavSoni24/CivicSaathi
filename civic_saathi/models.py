@@ -284,6 +284,7 @@ class Complaint(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     completed_at = models.DateTimeField(null=True, blank=True)
+    sla_deadline = models.DateTimeField(null=True, blank=True, help_text="Service Level Agreement deadline")
 
     def save(self, *args, **kwargs):
         if self.category and not self.department:

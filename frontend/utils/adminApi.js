@@ -70,8 +70,8 @@ export const adminComplaintAPI = {
     adminApi.post(`/complaints/${id}/reject/`, { reason }),
   
   // Assign to worker
-  assignToWorker: (id, workerId, notes) => 
-    adminApi.post(`/complaints/${id}/assign/`, { worker_id: workerId, notes }),
+  assignToWorker: (id, workerId, notes, slaHours) => 
+    adminApi.post(`/complaints/${id}/assign/`, { worker_id: workerId, notes, sla_hours: slaHours }),
   
   // Update status
   updateStatus: (id, status, notes, completionImage = null) => {

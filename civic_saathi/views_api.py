@@ -353,17 +353,34 @@ def assign_to_worker(request, pk):
     complaint = get_object_or_404(Complaint, pk=pk)
     worker_id = request.data.get('worker_id')
     notes = request.data.get('notes', '')
+    sla_hours = request.data.get('sla_hours')
     
     if not worker_id:
         return Response({'error': 'Worker ID required'}, status=status.HTTP_400_BAD_REQUEST)
     
+    if not sla_hours:
+        return Response({'error': 'SLA time (in hours) is required'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        sla_hours = int(sla_hours)
+        if sla_hours <= 0:
+            return Response({'error': 'SLA time must be greater than 0'}, status=status.HTTP_400_BAD_REQUEST)
+    except (ValueError, TypeError):
+        return Response({'error': 'Invalid SLA time format'}, status=status.HTTP_400_BAD_REQUEST)
+    
     worker = get_object_or_404(Worker, pk=worker_id)
+    
+    # Calculate SLA deadline
+    from django.utils import timezone
+    from datetime import timedelta
+    sla_deadline = timezone.now() + timedelta(hours=sla_hours)
     
     # Update complaint
     old_status = complaint.status
     complaint.current_worker = worker
     complaint.status = 'IN_PROGRESS'
     complaint.assigned = True
+    complaint.sla_deadline = sla_deadline
     
     # Assign office from worker if worker has an office
     if worker.office:
@@ -377,7 +394,7 @@ def assign_to_worker(request, pk):
     ComplaintLog.objects.create(
         complaint=complaint,
         action_by=action_user,
-        note=f"Assigned to worker {worker.user.username}. {notes}",
+        note=f"Assigned to worker {worker.user.username}. SLA: {sla_hours} hours. {notes}",
         old_status=old_status,
         new_status='IN_PROGRESS',
         new_assignee=worker.user.username
@@ -544,6 +561,54 @@ def worker_assignments(request):
     
     serializer = ComplaintSerializer(complaints, many=True)
     return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def worker_current_user(request):
+    """Get current worker details"""
+    user = request.user
+    
+    if not hasattr(user, 'worker'):
+        return Response({'error': 'Not a worker'}, status=status.HTTP_403_FORBIDDEN)
+    
+    worker = user.worker
+    serializer = WorkerSerializer(worker)
+    return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def worker_dashboard_stats(request):
+    """Get dashboard statistics for current worker"""
+    user = request.user
+    
+    if not hasattr(user, 'worker'):
+        return Response({'error': 'Not a worker'}, status=status.HTTP_403_FORBIDDEN)
+    
+    worker = user.worker
+    from django.utils import timezone
+    from datetime import timedelta
+    
+    # Get all complaints assigned to this worker
+    all_complaints = Complaint.objects.filter(current_worker=worker, is_deleted=False)
+    
+    # Calculate overdue complaints (complaints older than 7 days and still in progress)
+    overdue_threshold = timezone.now() - timedelta(days=7)
+    
+    # Calculate statistics
+    stats = {
+        'assigned': all_complaints.count(),
+        'pending': all_complaints.filter(status__in=['ASSIGNED', 'PENDING']).count(),
+        'in_progress': all_complaints.filter(status='IN_PROGRESS').count(),
+        'completed': all_complaints.filter(status__in=['COMPLETED', 'RESOLVED']).count(),
+        'overdue': all_complaints.filter(
+            status__in=['ASSIGNED', 'IN_PROGRESS'],
+            created_at__lt=overdue_threshold
+        ).count(),
+    }
+    
+    return Response(stats)
 
 
 @api_view(['GET'])

@@ -329,11 +329,41 @@ class WorkerSerializer(serializers.ModelSerializer):
     department_name = serializers.CharField(source='department.name', read_only=True)
     office_name = serializers.CharField(source='office.name', read_only=True, allow_null=True)
     
+    user = serializers.SerializerMethodField()
+    department = serializers.SerializerMethodField()
+    office = serializers.SerializerMethodField()
+    
+    def get_user(self, obj):
+        return {
+            'id': obj.user.id,
+            'username': obj.user.username,
+            'first_name': obj.user.first_name,
+            'last_name': obj.user.last_name,
+            'email': obj.user.email,
+            'phone': obj.user.phone,
+        }
+    
+    def get_department(self, obj):
+        if obj.department:
+            return {
+                'id': obj.department.id,
+                'name': obj.department.name,
+            }
+        return None
+    
+    def get_office(self, obj):
+        if obj.office:
+            return {
+                'id': obj.office.id,
+                'name': obj.office.name,
+            }
+        return None
+    
     class Meta:
         model = Worker
         fields = ('id', 'username', 'first_name', 'last_name', 'email', 'phone',
                   'department', 'department_name', 'office', 'office_name', 
-                  'role', 'city', 'state', 'joining_date', 'is_active')
+                  'role', 'city', 'state', 'joining_date', 'is_active', 'user')
 
 
 class WorkerAttendanceSerializer(serializers.ModelSerializer):
