@@ -7,11 +7,11 @@ import { complaintAPI, departmentAPI } from '../../utils/api';
 export default function NewComplaint() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [categories, setCategories] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    category: '',
+    department: '',
     location: '',
     latitude: '',
     longitude: '',
@@ -28,17 +28,17 @@ export default function NewComplaint() {
     if (!loading && !user) {
       router.push('/login');
     } else if (user) {
-      fetchCategories();
+      fetchDepartments();
       getLocation();
     }
   }, [user, loading]);
 
-  const fetchCategories = async () => {
+  const fetchDepartments = async () => {
     try {
-      const response = await departmentAPI.getCategories();
-      setCategories(response.data);
+      const response = await departmentAPI.getAll();
+      setDepartments(response.data);
     } catch (error) {
-      console.error('Error fetching categories:', error);
+      console.error('Error fetching departments:', error);
     }
   };
 
@@ -146,18 +146,18 @@ export default function NewComplaint() {
                 </div>
 
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>Category *</label>
+                  <label style={styles.label}>Department *</label>
                   <select
-                    name="category"
+                    name="department"
                     className="select"
-                    value={formData.category}
+                    value={formData.department}
                     onChange={handleChange}
                     required
                   >
-                    <option value="">Select a category</option>
-                    {categories.map(cat => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name} - {cat.department_name}
+                    <option value="">Select a department</option>
+                    {departments.map(dept => (
+                      <option key={dept.id} value={dept.id}>
+                        {dept.name}
                       </option>
                     ))}
                   </select>
