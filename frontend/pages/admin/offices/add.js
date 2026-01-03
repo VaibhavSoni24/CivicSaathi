@@ -68,7 +68,15 @@ export default function AddOffice() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // For phone field, only allow digits and limit to 10
+    if (name === 'phone') {
+      const digitsOnly = value.replace(/\D/g, '');
+      setFormData(prev => ({ ...prev, [name]: digitsOnly.slice(0, 10) }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
+    
     setError('');
     setSuccess('');
   };
@@ -84,6 +92,20 @@ export default function AddOffice() {
       setError('Please fill in all required fields');
       setSubmitting(false);
       return;
+    }
+    
+    // Validate phone number if provided
+    if (formData.phone) {
+      if (formData.phone.length !== 10) {
+        setError('Phone number must be exactly 10 digits');
+        setSubmitting(false);
+        return;
+      }
+      if (!/^[6-9]/.test(formData.phone)) {
+        setError('Phone number must start with 6, 7, 8, or 9');
+        setSubmitting(false);
+        return;
+      }
     }
 
     try {
@@ -256,8 +278,14 @@ export default function AddOffice() {
                       value={formData.phone}
                       onChange={handleInputChange}
                       style={styles.input}
-                      placeholder="e.g., +91 1234567890"
+                      placeholder="10-digit mobile number"
+                      pattern="[6-9][0-9]{9}"
+                      title="Enter a valid 10-digit mobile number starting with 6, 7, 8, or 9"
+                      maxLength="10"
                     />
+                    <small style={{ color: '#94a3b8', fontSize: '12px', marginTop: '4px' }}>
+                      Must be 10 digits starting with 6, 7, 8, or 9
+                    </small>
                   </div>
 
                   <div style={styles.formGroup}>

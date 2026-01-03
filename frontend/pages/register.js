@@ -27,10 +27,21 @@ export default function Register() {
   }, [user]);
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    const { name, value } = e.target;
+    
+    // For phone field, only allow digits and limit to 10
+    if (name === 'phone') {
+      const digitsOnly = value.replace(/\D/g, '');
+      setFormData({
+        ...formData,
+        [name]: digitsOnly.slice(0, 10),
+      });
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value,
+      });
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -39,6 +50,22 @@ export default function Register() {
 
     if (formData.password !== formData.confirm_password) {
       setError('Passwords do not match');
+      return;
+    }
+    
+    // Validate phone number
+    if (!formData.phone) {
+      setError('Phone number is required');
+      return;
+    }
+    
+    if (formData.phone.length !== 10) {
+      setError('Phone number must be exactly 10 digits');
+      return;
+    }
+    
+    if (!/^[6-9]/.test(formData.phone)) {
+      setError('Phone number must start with 6, 7, 8, or 9');
       return;
     }
 
@@ -170,8 +197,15 @@ export default function Register() {
               className="input"
               value={formData.phone}
               onChange={handleChange}
-              placeholder="Your phone number"
+              placeholder="10-digit mobile number"
+              required
+              pattern="[6-9][0-9]{9}"
+              title="Enter a valid 10-digit mobile number starting with 6, 7, 8, or 9"
+              maxLength="10"
             />
+            <small style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: '0.25rem', display: 'block' }}>
+              Must be 10 digits starting with 6, 7, 8, or 9
+            </small>
           </div>
 
           <div style={styles.row}>

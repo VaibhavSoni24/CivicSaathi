@@ -232,23 +232,21 @@ export default function Dashboard() {
                   </div>
                 </Link>
 
-                {stats.declined !== undefined && stats.declined > 0 && (
-                  <Link href="/complaints/status/declined" style={{ textDecoration: 'none' }}>
-                    <div className="card" style={{...styles.statCard, cursor: 'pointer'}}>
-                      <div style={styles.statIcon} className="badge-danger">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <circle cx="12" cy="12" r="10"></circle>
-                          <line x1="15" y1="9" x2="9" y2="15"></line>
-                          <line x1="9" y1="9" x2="15" y2="15"></line>
-                        </svg>
-                      </div>
-                      <div>
-                        <p style={styles.statLabel}>Declined/Rejected</p>
-                        <h2 style={styles.statValue}>{stats.declined}</h2>
-                      </div>
+                <Link href="/complaints/status/declined" style={{ textDecoration: 'none' }}>
+                  <div className="card" style={{...styles.statCard, cursor: 'pointer'}}>
+                    <div style={styles.statIcon} className="badge-danger">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="15" y1="9" x2="9" y2="15"></line>
+                        <line x1="9" y1="9" x2="15" y2="15"></line>
+                      </svg>
                     </div>
-                  </Link>
-                )}
+                    <div>
+                      <p style={styles.statLabel}>Declined/Rejected</p>
+                      <h2 style={styles.statValue}>{stats.declined || 0}</h2>
+                    </div>
+                  </div>
+                </Link>
               </div>
             </div>
           )}

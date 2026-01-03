@@ -121,7 +121,14 @@ export default function AddWorker() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // For phone field, only allow digits and limit to 10
+    if (name === 'phone') {
+      const digitsOnly = value.replace(/\D/g, '');
+      setFormData(prev => ({ ...prev, [name]: digitsOnly.slice(0, 10) }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -135,6 +142,16 @@ export default function AddWorker() {
       if (!formData.username || !formData.password || !formData.first_name || 
           !formData.last_name || !formData.department_id || !formData.role || !formData.city) {
         throw new Error('Please fill in all required fields');
+      }
+      
+      // Validate phone number if provided
+      if (formData.phone) {
+        if (formData.phone.length !== 10) {
+          throw new Error('Phone number must be exactly 10 digits');
+        }
+        if (!/^[6-9]/.test(formData.phone)) {
+          throw new Error('Phone number must start with 6, 7, 8, or 9');
+        }
       }
 
       // Create worker
@@ -274,8 +291,12 @@ export default function AddWorker() {
                         className="input"
                         value={formData.phone}
                         onChange={handleChange}
-                        placeholder="+91 9876543210"
+                        placeholder="10-digit mobile number"
+                        pattern="[6-9][0-9]{9}"
+                        title="Enter a valid 10-digit mobile number starting with 6, 7, 8, or 9"
+                        maxLength="10"
                       />
+                      <p style={styles.hint}>Must be 10 digits starting with 6, 7, 8, or 9</p>
                     </div>
                   </div>
                 </div>

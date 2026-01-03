@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.conf import settings
+from django.core.validators import RegexValidator
 
 
 # -------------------------
@@ -16,7 +17,18 @@ class CustomUser(AbstractUser):
     ]
     
     user_type = models.CharField(max_length=20, choices=USER_TYPE_CHOICES, default='CITIZEN')
-    phone = models.CharField(max_length=15, blank=True)
+    phone_regex = RegexValidator(
+        regex=r'^[6-9]\d{9}$',
+        message="Phone number must be 10 digits and start with 6, 7, 8, or 9."
+    )
+    phone = models.CharField(
+        validators=[phone_regex],
+        max_length=10,
+        unique=True,
+        blank=True,
+        null=True,
+        help_text="Enter a valid 10-digit mobile number starting with 6, 7, 8, or 9"
+    )
     city = models.CharField(max_length=100, blank=True)
     state = models.CharField(max_length=100, blank=True)
     

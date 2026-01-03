@@ -665,6 +665,22 @@ def create_worker(request):
             status=status.HTTP_400_BAD_REQUEST
         )
     
+    # Validate phone number if provided
+    if phone:
+        import re
+        if not re.match(r'^[6-9]\d{9}$', phone):
+            return Response(
+                {'error': 'Phone number must be exactly 10 digits and start with 6, 7, 8, or 9'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if phone number already exists
+        if CustomUser.objects.filter(phone=phone).exists():
+            return Response(
+                {'error': 'This phone number is already registered. Please use a different number.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
     # Check if department exists
     try:
         department = Department.objects.get(id=department_id)

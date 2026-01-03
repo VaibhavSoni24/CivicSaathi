@@ -27,6 +27,26 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         fields = ('username', 'email', 'password', 'confirm_password', 
                   'first_name', 'last_name', 'phone', 'city', 'state')
     
+    def validate_phone(self, value):
+        """Validate phone number format and uniqueness"""
+        if not value:
+            raise serializers.ValidationError("Phone number is required")
+        
+        # Check format: exactly 10 digits, starting with 6, 7, 8, or 9
+        import re
+        if not re.match(r'^[6-9]\d{9}$', value):
+            raise serializers.ValidationError(
+                "Phone number must be exactly 10 digits and start with 6, 7, 8, or 9"
+            )
+        
+        # Check uniqueness
+        if CustomUser.objects.filter(phone=value).exists():
+            raise serializers.ValidationError(
+                "This phone number is already registered. Please use a different number."
+            )
+        
+        return value
+    
     def validate(self, data):
         if data['password'] != data['confirm_password']:
             raise serializers.ValidationError("Passwords do not match")

@@ -22,28 +22,46 @@ export default function AdminDepartments() {
 
   const fetchDepartmentsAndStats = async () => {
     try {
+      // Fetch departments directly from the API
+      const deptResponse = await fetch('http://localhost:8000/api/departments/', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!deptResponse.ok) {
+        throw new Error('Failed to fetch departments');
+      }
+      
+      const deptData = await deptResponse.json();
+      const departmentsList = Array.isArray(deptData) ? deptData : (deptData.results || []);
+      
       // Fetch all complaints to calculate stats per department
-      const response = await adminComplaintAPI.getAllComplaints();
-      const data = response?.data?.results || response?.data || [];
+      const complaintResponse = await adminComplaintAPI.getAllComplaints();
+      const data = complaintResponse?.data?.results || complaintResponse?.data || [];
       const complaints = Array.isArray(data) ? data : [];
       
-      // Get unique departments with complaint counts
+      // Create a map with all departments and their stats
       const deptMap = new Map();
       
+      // Initialize all departments with zero stats
+      departmentsList.forEach(dept => {
+        deptMap.set(dept.name, {
+          id: dept.id,
+          name: dept.name,
+          totalComplaints: 0,
+          pending: 0,
+          inProgress: 0,
+          completed: 0,
+          declined: 0
+        });
+      });
+      
+      // Update stats from complaints
       complaints.forEach(complaint => {
         const deptName = complaint.department_name;
-        if (deptName) {
-          if (!deptMap.has(deptName)) {
-            deptMap.set(deptName, {
-              name: deptName,
-              totalComplaints: 0,
-              pending: 0,
-              inProgress: 0,
-              completed: 0,
-              declined: 0
-            });
-          }
-          
+        if (deptName && deptMap.has(deptName)) {
           const dept = deptMap.get(deptName);
           dept.totalComplaints++;
           
