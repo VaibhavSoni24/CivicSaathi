@@ -179,13 +179,16 @@ export const adminWorkerAPI = {
   getDetail: (workerId) => adminApi.get(`/workers/${workerId}/`),
   
   // Create worker
-  create: (data) => adminApi.post('/workers/', data),
+  create: (data) => adminApi.post('/workers/create/', data),
   
   // Update worker
   update: (workerId, data) => adminApi.put(`/workers/${workerId}/`, data),
   
   // Delete worker
   delete: (workerId) => adminApi.delete(`/workers/${workerId}/`),
+  
+  // Delete all workers
+  deleteAll: () => adminApi.post('/workers/delete-all/'),
   
   // Get worker assignments
   getAssignments: (workerId, params) => 

@@ -218,6 +218,14 @@ export default function AdminDashboard() {
                 />
                 
                 <ActionButton
+                  title="Add Worker"
+                  description="Create new worker account"
+                  icon="➕"
+                  onClick={() => router.push('/admin/workers/add')}
+                  highlight={true}
+                />
+                
+                <ActionButton
                   title="Attendance System"
                   description="Track worker attendance"
                   icon="📅"
@@ -285,9 +293,15 @@ function StatCard({ title, value, icon, color, bgColor }) {
   );
 }
 
-function ActionButton({ title, description, icon, onClick }) {
+function ActionButton({ title, description, icon, onClick, highlight }) {
   return (
-    <button style={styles.actionButton} onClick={onClick}>
+    <button 
+      style={{
+        ...styles.actionButton,
+        ...(highlight ? styles.actionButtonHighlight : {})
+      }} 
+      onClick={onClick}
+    >
       <div style={styles.actionIcon}>{icon}</div>
       <div style={styles.actionContent}>
         <h4 style={styles.actionTitle}>{title}</h4>
@@ -421,6 +435,10 @@ const styles = {
     transition: 'all 0.2s',
     textAlign: 'left',
     color: 'var(--text-primary)'
+  },
+  actionButtonHighlight: {
+    border: '2px solid var(--accent-primary)',
+    background: 'rgba(79, 70, 229, 0.05)',
   },
   actionIcon: {
     fontSize: '32px',

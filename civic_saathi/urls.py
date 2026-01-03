@@ -8,6 +8,9 @@ urlpatterns = [
     path('auth/logout/', views_api.logout, name='logout'),
     path('auth/me/', views_api.current_user, name='current_user'),
     
+    # Worker Authentication
+    path('worker/login/', views_api.worker_login, name='worker_login'),
+    
     # Complaints - Citizen
     path('complaints/create/', views_api.ComplaintCreateView.as_view(), name='complaint_create'),
     path('complaints/all/', views_api.AllComplaintsView.as_view(), name='all_complaints'),
@@ -39,6 +42,8 @@ urlpatterns = [
     
     # Workers
     path('workers/', views_api.get_workers, name='get_workers'),
+    path('workers/create/', views_api.create_worker, name='create_worker'),
+    path('workers/delete-all/', views_api.delete_all_workers, name='delete_all_workers'),
     path('workers/<int:pk>/', views_api.get_worker_detail, name='get_worker_detail'),
     
     # Dashboard

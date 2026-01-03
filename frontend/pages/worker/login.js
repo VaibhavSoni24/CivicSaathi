@@ -1,21 +1,21 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useWorkerAuth } from '../../context/WorkerAuthContext';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 
-export default function Login() {
+export default function WorkerLogin() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, user } = useAuth();
+  const { login, worker } = useWorkerAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (user) {
-      router.push('/dashboard');
+    if (worker) {
+      router.push('/worker/dashboard');
     }
-  }, [user]);
+  }, [worker]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -41,14 +41,14 @@ export default function Login() {
               <path d="M25 15L35 25L25 35L15 25L25 15Z" fill="white" />
               <defs>
                 <linearGradient id="gradient" x1="0" y1="0" x2="50" y2="50">
-                  <stop offset="0%" stopColor="#4f46e5" />
-                  <stop offset="100%" stopColor="#7c3aed" />
+                  <stop offset="0%" stopColor="#10b981" />
+                  <stop offset="100%" stopColor="#059669" />
                 </linearGradient>
               </defs>
             </svg>
           </div>
           <h1 style={styles.title}>Civic Saathi</h1>
-          <p style={styles.subtitle}>Sign in to your account</p>
+          <p style={styles.subtitle}>Worker Login Portal</p>
         </div>
 
         <form onSubmit={handleSubmit} style={styles.form}>
@@ -84,7 +84,7 @@ export default function Login() {
 
           <button 
             type="submit" 
-            className="btn btn-primary" 
+            className="btn"
             style={styles.submitBtn}
             disabled={loading}
           >
@@ -97,43 +97,10 @@ export default function Login() {
         </form>
 
         <div style={styles.footer}>
-          <p style={styles.footerText}>
-            Don't have an account?{' '}
-            <Link href="/register" style={styles.link}>
-              Sign up
-            </Link>
-          </p>
+          <Link href="/login" style={styles.link}>
+            ← Back to User Login
+          </Link>
         </div>
-
-        <div style={styles.divider}>
-          <span style={styles.dividerText}>or</span>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => router.push('/worker/login')}
-          className="btn"
-          style={styles.workerLoginBtn}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-            <circle cx="12" cy="7" r="4"></circle>
-          </svg>
-          <span>Worker Login Portal</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => router.push('/admin/login')}
-          className="btn"
-          style={styles.adminLoginBtn}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
-            <path d="M2 17l10 5 10-5M2 12l10 5 10-5"></path>
-          </svg>
-          <span>Admin Login Portal</span>
-        </button>
       </div>
     </div>
   );
@@ -146,7 +113,7 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     padding: '1rem',
-    background: 'linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 50%, #16213e 100%)',
+    background: 'linear-gradient(135deg, #0f1e0f 0%, #1a2e1a 50%, #16213e 100%)',
   },
   loginBox: {
     backgroundColor: 'var(--bg-card)',
@@ -169,7 +136,7 @@ const styles = {
   title: {
     fontSize: '2rem',
     fontWeight: '700',
-    background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
     WebkitBackgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
     marginBottom: '0.5rem',
@@ -206,74 +173,22 @@ const styles = {
     marginTop: '0.5rem',
     padding: '0.875rem',
     fontSize: '1rem',
+    backgroundColor: '#10b981',
+    color: 'white',
+    border: 'none',
+    borderRadius: 'var(--radius-lg)',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
   },
   footer: {
     marginTop: '2rem',
     textAlign: 'center',
   },
-  footerText: {
-    fontSize: '0.875rem',
-    color: 'var(--text-secondary)',
-  },
   link: {
-    color: 'var(--accent-primary)',
+    color: 'var(--accent-success)',
     fontWeight: '500',
     textDecoration: 'none',
-  },
-  divider: {
-    position: 'relative',
-    margin: '2rem 0 1.5rem',
-    textAlign: 'center',
-  },
-  dividerText: {
-    backgroundColor: 'var(--bg-card)',
-    padding: '0 1rem',
-    color: 'var(--text-muted)',
-    fontSize: '0.75rem',
-    position: 'relative',
-    zIndex: 1,
-  },
-  workerLoginBtn: {
-    width: '100%',
-    padding: '1rem',
-    marginBottom: '0.75rem',
-    backgroundColor: 'var(--bg-tertiary)',
-    border: '2px solid var(--border-secondary)',
-    borderRadius: 'var(--radius-lg)',
-    color: 'var(--text-primary)',
-    fontSize: '0.95rem',
-    fontWeight: '600',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '0.75rem',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-    '&:hover': {
-      backgroundColor: 'var(--bg-secondary)',
-      borderColor: 'var(--accent-success)',
-      transform: 'translateY(-2px)',
-    },
-  },
-  adminLoginBtn: {
-    width: '100%',
-    padding: '1rem',
-    backgroundColor: 'var(--bg-tertiary)',
-    border: '2px solid var(--border-secondary)',
-    borderRadius: 'var(--radius-lg)',
-    color: 'var(--text-primary)',
-    fontSize: '0.95rem',
-    fontWeight: '600',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '0.75rem',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-    '&:hover': {
-      backgroundColor: 'var(--bg-secondary)',
-      borderColor: 'var(--accent-primary)',
-      transform: 'translateY(-2px)',
-    },
+    fontSize: '0.875rem',
   },
 };

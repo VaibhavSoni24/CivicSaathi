@@ -118,6 +118,47 @@ def login(request):
 
 
 @api_view(['POST'])
+@permission_classes([AllowAny])
+def worker_login(request):
+    """Worker login"""
+    username = request.data.get('username')
+    password = request.data.get('password')
+    
+    user = authenticate(username=username, password=password)
+    if user and user.user_type == 'WORKER':
+        # Check if worker exists
+        try:
+            worker = Worker.objects.get(user=user, is_active=True)
+            token, created = Token.objects.get_or_create(user=user)
+            
+            return Response({
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'first_name': user.first_name,
+                    'last_name': user.last_name,
+                    'email': user.email,
+                    'user_type': user.user_type,
+                },
+                'worker': {
+                    'id': worker.id,
+                    'department': worker.department.name,
+                    'department_id': worker.department.id,
+                    'office': worker.office.name if worker.office else None,
+                    'office_id': worker.office.id if worker.office else None,
+                    'role': worker.role,
+                    'city': worker.city,
+                    'state': worker.state,
+                },
+                'token': token.key
+            })
+        except Worker.DoesNotExist:
+            return Response({'error': 'Worker account not found or inactive'}, status=status.HTTP_401_UNAUTHORIZED)
+    
+    return Response({'error': 'Invalid credentials or not a worker account'}, status=status.HTTP_401_UNAUTHORIZED)
+
+
+@api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def logout(request):
     """User logout"""
@@ -487,6 +528,126 @@ def get_worker_detail(request, pk):
     worker = get_object_or_404(Worker, pk=pk)
     serializer = WorkerSerializer(worker)
     return Response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def create_worker(request):
+    """Create a new worker"""
+    from django.db import connection
+    from datetime import date
+    
+    # Extract data
+    username = request.data.get('username')
+    password = request.data.get('password')
+    first_name = request.data.get('first_name')
+    last_name = request.data.get('last_name')
+    email = request.data.get('email')
+    phone = request.data.get('phone')
+    department_id = request.data.get('department_id')
+    office_id = request.data.get('office_id')
+    role = request.data.get('role')
+    city = request.data.get('city')
+    state = request.data.get('state', 'Rajasthan')
+    address = request.data.get('address', '')
+    
+    # Validation
+    if not all([username, password, first_name, last_name, department_id, role, city]):
+        return Response(
+            {'error': 'Missing required fields: username, password, first_name, last_name, department_id, role, city'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Check if username already exists
+    if CustomUser.objects.filter(username=username).exists():
+        return Response(
+            {'error': 'Username already exists'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Check if department exists
+    try:
+        department = Department.objects.get(id=department_id)
+    except Department.DoesNotExist:
+        return Response(
+            {'error': 'Department not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Check if office exists (optional)
+    office = None
+    if office_id:
+        try:
+            office = Office.objects.get(id=office_id)
+        except Office.DoesNotExist:
+            pass
+    
+    try:
+        # Create user in custom_user table
+        user = CustomUser.objects.create_user(
+            username=username,
+            email=email or f'{username}@municipal.gov.in',
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
+            user_type='WORKER',
+            city=city,
+            state=state,
+            phone=phone or ''
+        )
+        
+        # Create worker (Worker model uses CustomUser directly, no need for auth_user)
+        worker = Worker.objects.create(
+            user=user,
+            department=department,
+            office=office,
+            role=role,
+            city=city,
+            state=state,
+            address=address or f'{city}, {state}',
+            joining_date=date.today(),
+            is_active=True
+        )
+        
+        serializer = WorkerSerializer(worker)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    except Exception as e:
+        # If worker creation fails, delete the user
+        if 'user' in locals():
+            user.delete()
+        return Response(
+            {'error': f'Failed to create worker: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def delete_all_workers(request):
+    """Delete all workers and their associated users"""
+    try:
+        # Get all workers
+        workers = Worker.objects.all()
+        worker_count = workers.count()
+        
+        # Delete users associated with workers
+        user_ids = list(workers.values_list('user_id', flat=True))
+        CustomUser.objects.filter(id__in=user_ids, user_type='WORKER').delete()
+        
+        # Delete workers
+        workers.delete()
+        
+        return Response({
+            'message': f'Successfully deleted {worker_count} workers',
+            'deleted_count': worker_count
+        }, status=status.HTTP_200_OK)
+    
+    except Exception as e:
+        return Response(
+            {'error': f'Failed to delete workers: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
 # -------------------------

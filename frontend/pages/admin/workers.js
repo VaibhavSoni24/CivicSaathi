@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAdminAuth } from '../../context/AdminAuthContext';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
+import Link from 'next/link';
 import AdminNavbar from '../../components/AdminNavbar';
 import { adminWorkerAPI } from '../../utils/adminApi';
 
@@ -32,6 +33,28 @@ export default function AdminWorkers() {
     }
   };
 
+  const handleDeleteAllWorkers = async () => {
+    if (!confirm('Are you sure you want to delete ALL workers? This action cannot be undone!')) {
+      return;
+    }
+    
+    if (!confirm('This will permanently delete all worker accounts. Are you absolutely sure?')) {
+      return;
+    }
+
+    try {
+      setLoadingData(true);
+      await adminWorkerAPI.deleteAll();
+      alert('All workers have been deleted successfully');
+      fetchWorkers();
+    } catch (error) {
+      console.error('Error deleting workers:', error);
+      alert('Failed to delete workers: ' + (error.response?.data?.error || error.message));
+    } finally {
+      setLoadingData(false);
+    }
+  };
+
   if (loading || loadingData) {
     return <div style={styles.loadingContainer}><div className="spinner"></div></div>;
   }
@@ -55,9 +78,21 @@ export default function AdminWorkers() {
                 <h1 style={styles.title}>Worker Management</h1>
                 <p style={styles.subtitle}>{filteredWorkers.length} of {workers.length} workers</p>
               </div>
-              <button onClick={() => alert('Add worker functionality coming soon')} style={styles.addButton}>
-                + Add Worker
-              </button>
+              <div style={styles.headerActions}>
+                {workers.length > 0 && (
+                  <button 
+                    onClick={handleDeleteAllWorkers}
+                    style={styles.deleteAllButton}
+                  >
+                    🗑️ Delete All Workers
+                  </button>
+                )}
+                <Link href="/admin/workers/add">
+                  <button style={styles.addButton}>
+                    + Add Worker
+                  </button>
+                </Link>
+              </div>
             </div>
 
             {/* Filters */}
@@ -113,10 +148,12 @@ const styles = {
   main: { paddingTop: '70px' },
   content: { maxWidth: '1400px', margin: '0 auto', padding: '30px 20px' },
   loadingContainer: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '30px' },
+  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '30px', flexWrap: 'wrap', gap: '1rem' },
+  headerActions: { display: 'flex', gap: '0.75rem', alignItems: 'center' },
   title: { fontSize: '28px', fontWeight: '700', color: '#111827', margin: '0 0 8px 0' },
   subtitle: { fontSize: '14px', color: '#6b7280' },
   addButton: { padding: '10px 20px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '600' },
+  deleteAllButton: { padding: '10px 20px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.2s' },
   filtersCard: { background: 'white', borderRadius: '12px', padding: '20px', marginBottom: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' },
   searchInput: { width: '100%', padding: '10px 16px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' },
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' },
