@@ -364,12 +364,21 @@ def assign_to_worker(request, pk):
     complaint.current_worker = worker
     complaint.status = 'IN_PROGRESS'
     complaint.assigned = True
+    
+    # Assign office from worker if worker has an office
+    if worker.office:
+        complaint.office = worker.office
+    
     complaint.save()
     
-    # Log the action
+    # Log the action - handle anonymous users
+    action_user = None
+    if request.user and request.user.is_authenticated:
+        action_user = request.user
+    
     ComplaintLog.objects.create(
         complaint=complaint,
-        action_by=get_action_user(request),
+        action_by=action_user,
         note=f"Assigned to worker {worker.user.username}. {notes}",
         old_status=old_status,
         new_status='IN_PROGRESS',
@@ -378,6 +387,36 @@ def assign_to_worker(request, pk):
     
     serializer = ComplaintSerializer(complaint)
     return Response(serializer.data)
+
+
+@api_view(['POST'])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def verify_complaint(request, pk):
+    """Verify a complaint as genuine"""
+    complaint = get_object_or_404(Complaint, pk=pk)
+    
+    old_status = complaint.status
+    complaint.is_genuine = True
+    complaint.filter_passed = True
+    complaint.filter_checked = True
+    complaint.status = 'PENDING'
+    complaint.save()
+    
+    # Log the action - handle anonymous users
+    action_user = None
+    if request.user and request.user.is_authenticated:
+        action_user = request.user
+    
+    ComplaintLog.objects.create(
+        complaint=complaint,
+        action_by=action_user,
+        note="Complaint verified as genuine",
+        old_status=old_status,
+        new_status='PENDING'
+    )
+    
+    return Response({'message': 'Complaint verified successfully'})
 
 
 @api_view(['POST'])
@@ -494,6 +533,67 @@ def worker_assignments(request):
     
     serializer = ComplaintSerializer(complaints, many=True)
     return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def worker_complaint_detail(request, pk):
+    """Get complaint detail for worker"""
+    user = request.user
+    
+    if not hasattr(user, 'worker'):
+        return Response({'error': 'Not a worker'}, status=status.HTTP_403_FORBIDDEN)
+    
+    try:
+        complaint = Complaint.objects.get(pk=pk, current_worker=user.worker, is_deleted=False)
+        serializer = ComplaintSerializer(complaint, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    except Complaint.DoesNotExist:
+        return Response(
+            {'error': 'Complaint not found or not assigned to you'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def worker_complete_complaint(request, pk):
+    """Mark complaint as completed by worker"""
+    user = request.user
+    
+    if not hasattr(user, 'worker'):
+        return Response({'error': 'Not a worker'}, status=status.HTTP_403_FORBIDDEN)
+    
+    try:
+        complaint = Complaint.objects.get(pk=pk, current_worker=user.worker, is_deleted=False)
+        
+        # Update complaint status
+        complaint.status = 'COMPLETED'
+        complaint.completion_note = request.data.get('completion_note', '')
+        
+        # Handle completion image if provided
+        if 'completion_image' in request.FILES:
+            complaint.completion_image = request.FILES['completion_image']
+        
+        complaint.resolved_at = timezone.now()
+        complaint.save()
+        
+        # Create log entry
+        ComplaintLog.objects.create(
+            complaint=complaint,
+            note=f'Status changed to COMPLETED by worker {user.username}. Completion note: {complaint.completion_note}',
+            old_status=complaint.status,
+            new_status='COMPLETED',
+            action_by=user
+        )
+        
+        serializer = ComplaintSerializer(complaint, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    except Complaint.DoesNotExist:
+        return Response(
+            {'error': 'Complaint not found or not assigned to you'},
+            status=status.HTTP_404_NOT_FOUND
+        )
 
 
 # -------------------------
@@ -646,6 +746,151 @@ def delete_all_workers(request):
     except Exception as e:
         return Response(
             {'error': f'Failed to delete workers: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['PUT', 'PATCH'])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def update_worker(request, pk):
+    """Update worker details"""
+    try:
+        worker = get_object_or_404(Worker, pk=pk)
+        
+        # Extract data
+        first_name = request.data.get('first_name')
+        last_name = request.data.get('last_name')
+        email = request.data.get('email')
+        phone = request.data.get('phone')
+        department_id = request.data.get('department_id')
+        office_id = request.data.get('office_id')
+        role = request.data.get('role')
+        city = request.data.get('city')
+        state = request.data.get('state')
+        address = request.data.get('address')
+        is_active = request.data.get('is_active')
+        
+        # Update user fields
+        user = worker.user
+        if first_name is not None:
+            user.first_name = first_name
+        if last_name is not None:
+            user.last_name = last_name
+        if email is not None:
+            user.email = email
+        if phone is not None:
+            user.phone = phone
+        if city is not None:
+            user.city = city
+        if state is not None:
+            user.state = state
+        user.save()
+        
+        # Update worker fields
+        if department_id is not None:
+            try:
+                department = Department.objects.get(id=department_id)
+                worker.department = department
+            except Department.DoesNotExist:
+                return Response(
+                    {'error': 'Department not found'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        
+        if office_id is not None:
+            if office_id == '':
+                worker.office = None
+            else:
+                try:
+                    office = Office.objects.get(id=office_id)
+                    worker.office = office
+                except Office.DoesNotExist:
+                    return Response(
+                        {'error': 'Office not found'},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+        
+        if role is not None:
+            worker.role = role
+        if city is not None:
+            worker.city = city
+        if state is not None:
+            worker.state = state
+        if address is not None:
+            worker.address = address
+        if is_active is not None:
+            worker.is_active = is_active
+        
+        worker.save()
+        
+        serializer = WorkerSerializer(worker)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    except Exception as e:
+        return Response(
+            {'error': f'Failed to update worker: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def get_worker_statistics(request, pk):
+    """Get worker statistics including active and completed assignments"""
+    try:
+        worker = get_object_or_404(Worker, pk=pk)
+        
+        # Get active assignments (IN_PROGRESS or ASSIGNED status)
+        active_count = Complaint.objects.filter(
+            current_worker=worker,
+            status__in=['ASSIGNED', 'IN_PROGRESS']
+        ).count()
+        
+        # Get completed assignments
+        completed_count = Complaint.objects.filter(
+            current_worker=worker,
+            status='COMPLETED'
+        ).count()
+        
+        # Total assignments
+        total_count = Complaint.objects.filter(current_worker=worker).count()
+        
+        return Response({
+            'worker_id': worker.id,
+            'active_assignments': active_count,
+            'completed_assignments': completed_count,
+            'total_assignments': total_count
+        }, status=status.HTTP_200_OK)
+    
+    except Exception as e:
+        return Response(
+            {'error': f'Failed to get worker statistics: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def get_worker_complaints(request, pk):
+    """Get all complaints assigned to a specific worker"""
+    try:
+        worker = get_object_or_404(Worker, pk=pk)
+        
+        # Get all complaints for this worker
+        complaints = Complaint.objects.filter(
+            current_worker=worker,
+            is_deleted=False
+        ).order_by('-created_at')
+        
+        serializer = ComplaintSerializer(complaints, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    except Exception as e:
+        return Response(
+            {'error': f'Failed to get worker complaints: {str(e)}'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
@@ -872,6 +1117,70 @@ def get_offices(request):
     queryset = queryset.order_by('city', 'department__name')
     serializer = OfficeSerializer(queryset, many=True)
     return Response(serializer.data)
+
+
+@api_view(['POST'])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def create_office(request):
+    """Create a new office"""
+    # Extract data
+    name = request.data.get('name')
+    department_id = request.data.get('department_id')
+    city = request.data.get('city')
+    state = request.data.get('state', 'Rajasthan')
+    address = request.data.get('address')
+    pincode = request.data.get('pincode', '')
+    phone = request.data.get('phone', '')
+    email = request.data.get('email', '')
+    office_hours = request.data.get('office_hours', '9:00 AM - 5:00 PM')
+    
+    # Validation
+    if not all([name, department_id, city, address]):
+        return Response(
+            {'error': 'Missing required fields: name, department_id, city, address'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Check if department exists
+    try:
+        department = Department.objects.get(id=department_id)
+    except Department.DoesNotExist:
+        return Response(
+            {'error': 'Department not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Check if office with same department and city already exists
+    if Office.objects.filter(department=department, city__iexact=city).exists():
+        return Response(
+            {'error': f'An office for {department.name} in {city} already exists'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    try:
+        # Create office
+        office = Office.objects.create(
+            name=name,
+            department=department,
+            city=city,
+            state=state,
+            address=address,
+            pincode=pincode or '000000',
+            phone=phone or '0000000000',
+            email=email or f'{city.lower()}.{department.name.lower().replace(" ", "")}@municipal.gov.in',
+            office_hours=office_hours,
+            is_active=True
+        )
+        
+        serializer = OfficeSerializer(office)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    except Exception as e:
+        return Response(
+            {'error': f'Failed to create office: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
 @api_view(['GET'])

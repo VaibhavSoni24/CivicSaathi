@@ -43,8 +43,8 @@ export default function ComplaintDetail() {
 
     try {
       const formData = {
-        notes: completionNotes,
-        image: completionImage,
+        completion_note: completionNotes,
+        completion_image: completionImage,
       };
       
       await workerComplaintsAPI.submitCompletion(id, formData);
@@ -128,8 +128,24 @@ export default function ComplaintDetail() {
                 <span style={styles.infoValue}>📍 {complaint.city}, {complaint.state}</span>
               </div>
               <div style={styles.infoItem}>
-                <span style={styles.infoLabel}>Created</span>
-                <span style={styles.infoValue}>{new Date(complaint.created_at).toLocaleString()}</span>
+                <span style={styles.infoLabel}>Department</span>
+                <span style={styles.infoValue}>{complaint.department_name || 'N/A'}</span>
+              </div>
+              <div style={styles.infoItem}>
+                <span style={styles.infoLabel}>Office</span>
+                <span style={styles.infoValue}>{complaint.office_name || 'Not assigned'}</span>
+              </div>
+              <div style={styles.infoItem}>
+                <span style={styles.infoLabel}>Submitted on</span>
+                <span style={styles.infoValue}>{new Date(complaint.created_at).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+              <div style={styles.infoItem}>
+                <span style={styles.infoLabel}>Citizen</span>
+                <span style={styles.infoValue}>{complaint.user_username || 'Anonymous'}</span>
+              </div>
+              <div style={styles.infoItem}>
+                <span style={styles.infoLabel}>Upvotes</span>
+                <span style={styles.infoValue}>👍 {complaint.upvote_count || 0}</span>
               </div>
               {complaint.sla_deadline && (
                 <div style={styles.infoItem}>
@@ -140,17 +156,39 @@ export default function ComplaintDetail() {
                 </div>
               )}
               <div style={styles.infoItem}>
-                <span style={styles.infoLabel}>Category</span>
-                <span style={styles.infoValue}>{complaint.category?.name || 'N/A'}</span>
-              </div>
-              <div style={styles.infoItem}>
-                <span style={styles.infoLabel}>Department</span>
-                <span style={styles.infoValue}>{complaint.department?.name || 'N/A'}</span>
-              </div>
-              <div style={styles.infoItem}>
                 <span style={styles.infoLabel}>Priority</span>
                 <span style={styles.infoValue}>{complaint.priority || 'Normal'}</span>
               </div>
+            </div>
+
+            {/* Completion Section */}
+            <div style={styles.section}>
+              <h3 style={styles.sectionTitle}>Completion</h3>
+              {complaint.status === 'COMPLETED' ? (
+                <div>
+                  {complaint.completion_image && (
+                    <img 
+                      src={complaint.completion_image} 
+                      alt="Completion" 
+                      style={{...styles.image, marginBottom: '16px'}} 
+                    />
+                  )}
+                  {complaint.completion_note ? (
+                    <div style={{ padding: '16px', backgroundColor: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-primary)' }}>
+                      <p style={{ fontSize: '14px', color: 'var(--text-primary)', lineHeight: '1.6', margin: 0 }}>
+                        <strong>Completion Note:</strong><br />
+                        {complaint.completion_note}
+                      </p>
+                    </div>
+                  ) : (
+                    <p style={{ fontSize: '14px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>No completion note provided</p>
+                  )}
+                </div>
+              ) : (
+                <div style={{ padding: '20px', textAlign: 'center', backgroundColor: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-primary)' }}>
+                  <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: 0 }}>Not completed yet</p>
+                </div>
+              )}
             </div>
 
             {/* Submit Completion Form */}

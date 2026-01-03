@@ -36,9 +36,10 @@ export default function AddWorker() {
     } else if (adminUser) {
       fetchDepartments();
       
-      // If department admin, auto-set department
+      // If department admin, auto-set department and fetch offices
       if (isDepartmentAdmin && adminUser.departmentId) {
         setFormData(prev => ({ ...prev, department_id: adminUser.departmentId.toString() }));
+        fetchOffices(adminUser.departmentId);
       }
     }
   }, [adminUser, loading]);
@@ -46,7 +47,11 @@ export default function AddWorker() {
   useEffect(() => {
     // Fetch offices when department changes
     if (formData.department_id) {
+      console.log('Department changed to:', formData.department_id);
       fetchOffices(formData.department_id);
+    } else {
+      console.log('No department selected, clearing offices');
+      setOffices([]);
     }
   }, [formData.department_id]);
 
@@ -100,10 +105,13 @@ export default function AddWorker() {
       }
       
       const data = await response.json();
-      console.log('Offices response:', data);
-      console.log('Number of offices:', data.length);
+      console.log('Offices response data:', data);
+      console.log('Is array?', Array.isArray(data));
+      console.log('Number of offices:', Array.isArray(data) ? data.length : 'not an array');
       
-      setOffices(Array.isArray(data) ? data : (data.results || []));
+      const officesArray = Array.isArray(data) ? data : (data.results || []);
+      console.log('Setting offices to:', officesArray);
+      setOffices(officesArray);
     } catch (error) {
       console.error('Error fetching offices:', error);
       setError('Failed to load offices: ' + error.message);
@@ -317,12 +325,20 @@ export default function AddWorker() {
                         onChange={handleChange}
                       >
                         <option value="">Select Office</option>
+                        {offices.length === 0 && formData.department_id && (
+                          <option value="" disabled>No offices available for this department</option>
+                        )}
                         {offices.map(office => (
                           <option key={office.id} value={office.id}>
                             {office.name} - {office.city}
                           </option>
                         ))}
                       </select>
+                      <p style={styles.hint}>
+                        {formData.department_id 
+                          ? `${offices.length} office(s) available` 
+                          : 'Select a department first'}
+                      </p>
                     </div>
 
                     <div style={styles.formGroup}>

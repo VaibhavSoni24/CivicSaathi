@@ -21,6 +21,7 @@ urlpatterns = [
     
     # Complaints - Department Admin
     path('department/complaints/', views_api.department_complaints, name='department_complaints'),
+    path('complaints/<int:pk>/verify/', views_api.verify_complaint, name='verify_complaint'),
     path('complaints/<int:pk>/assign/', views_api.assign_to_worker, name='assign_to_worker'),
     path('complaints/<int:pk>/update-status/', views_api.update_complaint_status, name='update_complaint_status'),
     path('complaints/<int:pk>/reject/', views_api.reject_complaint, name='reject_complaint'),
@@ -28,6 +29,8 @@ urlpatterns = [
     
     # Worker
     path('worker/assignments/', views_api.worker_assignments, name='worker_assignments'),
+    path('worker/complaints/<int:pk>/', views_api.worker_complaint_detail, name='worker_complaint_detail'),
+    path('worker/complaints/<int:pk>/complete/', views_api.worker_complete_complaint, name='worker_complete_complaint'),
     
     # Attendance
     path('attendance/mark/', views_api.mark_attendance, name='mark_attendance'),
@@ -39,12 +42,16 @@ urlpatterns = [
     path('categories/', views_api.get_categories, name='get_categories'),
     path('departments/', views_api.get_departments, name='get_departments'),
     path('offices/', views_api.get_offices, name='get_offices'),
+    path('offices/create/', views_api.create_office, name='create_office'),
     
     # Workers
     path('workers/', views_api.get_workers, name='get_workers'),
     path('workers/create/', views_api.create_worker, name='create_worker'),
     path('workers/delete-all/', views_api.delete_all_workers, name='delete_all_workers'),
     path('workers/<int:pk>/', views_api.get_worker_detail, name='get_worker_detail'),
+    path('workers/<int:pk>/update/', views_api.update_worker, name='update_worker'),
+    path('workers/<int:pk>/statistics/', views_api.get_worker_statistics, name='get_worker_statistics'),
+    path('workers/<int:pk>/complaints/', views_api.get_worker_complaints, name='get_worker_complaints'),
     
     # Dashboard
     path('dashboard/stats/', views_api.dashboard_stats, name='dashboard_stats'),

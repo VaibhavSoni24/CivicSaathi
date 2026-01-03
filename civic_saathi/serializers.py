@@ -86,10 +86,14 @@ class ComplaintCategorySerializer(serializers.ModelSerializer):
 
 class OfficeSerializer(serializers.ModelSerializer):
     department_name = serializers.CharField(source='department.name', read_only=True)
+    worker_count = serializers.SerializerMethodField()
     
     class Meta:
         model = Office
         fields = '__all__'
+    
+    def get_worker_count(self, obj):
+        return obj.workers.filter(is_active=True).count()
 
 
 # -------------------------
@@ -106,7 +110,9 @@ class ComplaintSerializer(serializers.ModelSerializer):
     user_username = serializers.CharField(source='user.username', read_only=True)
     category_name = serializers.CharField(source='category.name', read_only=True)
     department_name = serializers.CharField(source='department.name', read_only=True)
+    office_name = serializers.CharField(source='office.name', read_only=True, allow_null=True)
     office_address = serializers.CharField(source='office.address', read_only=True, allow_null=True)
+    current_worker_name = serializers.SerializerMethodField()
     upvote_count = serializers.IntegerField(read_only=True)
     user_has_voted = serializers.SerializerMethodField()
     
@@ -125,6 +131,11 @@ class ComplaintSerializer(serializers.ModelSerializer):
         if request and request.user.is_authenticated:
             return ComplaintVote.objects.filter(complaint=obj, user=request.user).exists()
         return False
+    
+    def get_current_worker_name(self, obj):
+        if obj.current_worker:
+            return f"{obj.current_worker.user.first_name} {obj.current_worker.user.last_name}"
+        return None
     
     def get_sla_timer(self, obj):
         """Calculate SLA timer information for frontend display"""

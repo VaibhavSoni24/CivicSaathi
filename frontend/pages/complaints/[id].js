@@ -280,6 +280,36 @@ export default function ComplaintDetail() {
                 </div>
               )}
 
+              {/* Completion Section */}
+              <div className="card" style={styles.section}>
+                <h2 style={styles.sectionTitle}>Completion</h2>
+                {complaint.status === 'COMPLETED' ? (
+                  <div>
+                    {complaint.completion_image && (
+                      <img 
+                        src={complaint.completion_image.startsWith('http') ? complaint.completion_image : `http://localhost:8000${complaint.completion_image}`} 
+                        alt="Completion" 
+                        style={{...styles.image, marginBottom: '16px'}} 
+                      />
+                    )}
+                    {complaint.completion_note ? (
+                      <div style={{ padding: '16px', backgroundColor: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-primary)' }}>
+                        <p style={{ fontSize: '14px', color: 'var(--text-primary)', lineHeight: '1.6', margin: 0 }}>
+                          <strong>Worker's Note:</strong><br />
+                          {complaint.completion_note}
+                        </p>
+                      </div>
+                    ) : (
+                      <p style={{ fontSize: '14px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>No completion note provided</p>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ padding: '20px', textAlign: 'center', backgroundColor: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-primary)' }}>
+                    <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: 0 }}>Not completed yet</p>
+                  </div>
+                )}
+              </div>
+
               {/* Declined/Rejected Reason */}
               {['DECLINED', 'REJECTED'].includes(complaint.status) && complaint.filter_reason && (
                 <div className="card" style={{...styles.section, ...styles.warningCard}}>
@@ -297,7 +327,11 @@ export default function ComplaintDetail() {
                 <div style={styles.detailsList}>
                   <div style={styles.detailItem}>
                     <span style={styles.detailLabel}>Department</span>
-                    <span style={styles.detailValue}>{complaint.department_name}</span>
+                    <span style={styles.detailValue}>{complaint.department_name || 'N/A'}</span>
+                  </div>
+                  <div style={styles.detailItem}>
+                    <span style={styles.detailLabel}>Office</span>
+                    <span style={styles.detailValue}>{complaint.office_name || 'Not assigned yet'}</span>
                   </div>
                   <div style={styles.detailItem}>
                     <span style={styles.detailLabel}>Priority</span>
@@ -308,6 +342,19 @@ export default function ComplaintDetail() {
                   <div style={styles.detailItem}>
                     <span style={styles.detailLabel}>Status</span>
                     <span style={styles.detailValue}>{complaint.status.replace('_', ' ')}</span>
+                  </div>
+                  <div style={styles.detailItem}>
+                    <span style={styles.detailLabel}>Submitted on</span>
+                    <span style={styles.detailValue}>
+                      {new Date(complaint.created_at).toLocaleDateString('en-US', { 
+                        year: 'numeric', month: 'long', day: 'numeric', 
+                        hour: '2-digit', minute: '2-digit'
+                      })}
+                    </span>
+                  </div>
+                  <div style={styles.detailItem}>
+                    <span style={styles.detailLabel}>Worker Assigned</span>
+                    <span style={styles.detailValue}>{complaint.current_worker_name || 'Not assigned yet'}</span>
                   </div>
                   {complaint.completed_at && (
                     <div style={styles.detailItem}>

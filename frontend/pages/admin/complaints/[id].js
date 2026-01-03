@@ -13,6 +13,7 @@ export default function ComplaintDetail() {
   const [complaint, setComplaint] = useState(null);
   const [loading, setLoading] = useState(true);
   const [workers, setWorkers] = useState([]);
+  const [workerStats, setWorkerStats] = useState({});
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showReassignModal, setShowReassignModal] = useState(false);
@@ -26,9 +27,14 @@ export default function ComplaintDetail() {
   useEffect(() => {
     if (id && adminUser) {
       fetchComplaintDetail();
-      fetchWorkers();
     }
   }, [id, adminUser]);
+
+  useEffect(() => {
+    if (complaint && showAssignModal) {
+      fetchWorkersForDepartment();
+    }
+  }, [complaint, showAssignModal]);
 
   const fetchComplaintDetail = async () => {
     try {
@@ -46,6 +52,47 @@ export default function ComplaintDetail() {
     try {
       const response = await adminWorkerAPI.getAll();
       setWorkers(response.data?.results || response.data || []);
+    } catch (error) {
+      console.error('Error fetching workers:', error);
+    }
+  };
+
+  const fetchWorkersForDepartment = async () => {
+    if (!complaint?.department) {
+      console.error('No department found in complaint');
+      return;
+    }
+
+    try {
+      // Fetch all workers
+      const response = await adminWorkerAPI.getAll();
+      const allWorkers = response.data?.results || response.data || [];
+      
+      // Filter workers by complaint's department
+      const departmentWorkers = allWorkers.filter(w => w.department === complaint.department);
+      setWorkers(departmentWorkers);
+      
+      // Fetch statistics for each worker
+      const stats = {};
+      await Promise.all(
+        departmentWorkers.map(async (worker) => {
+          try {
+            const statResponse = await fetch(`http://localhost:8000/api/workers/${worker.id}/statistics/`);
+            if (statResponse.ok) {
+              const data = await statResponse.json();
+              stats[worker.id] = data;
+            }
+          } catch (err) {
+            console.error(`Error fetching stats for worker ${worker.id}:`, err);
+            stats[worker.id] = {
+              active_assignments: 0,
+              completed_assignments: 0,
+              total_assignments: 0
+            };
+          }
+        })
+      );
+      setWorkerStats(stats);
     } catch (error) {
       console.error('Error fetching workers:', error);
     }
@@ -315,11 +362,12 @@ export default function ComplaintDetail() {
                   <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid var(--border-primary)' }}>
                     <div style={styles.metaGrid}>
                       <MetaItem icon="📍" label="Location" value={`${complaint.city}, ${complaint.state}`} />
-                      <MetaItem icon="🏢" label="Department" value={complaint.department} />
-                      <MetaItem icon="📂" label="Category" value={complaint.category || 'N/A'} />
-                      <MetaItem icon="📅" label="Submitted" value={new Date(complaint.created_at).toLocaleString()} />
+                      <MetaItem icon="🏢" label="Department" value={complaint.department_name || 'N/A'} />
+                      <MetaItem icon="🏫" label="Office" value={complaint.office_name || 'Not assigned'} />
+                      <MetaItem icon="📅" label="Submitted on" value={new Date(complaint.created_at).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} />
                       <MetaItem icon="👤" label="Citizen" value={complaint.citizen_name || complaint.citizen_email || 'Anonymous'} />
                       <MetaItem icon="👍" label="Upvotes" value={complaint.upvote_count || 0} />
+                      <MetaItem icon="👷" label="Worker Assigned" value={complaint.current_worker_name || 'Not assigned'} />
                     </div>
                   </div>
                 </div>
@@ -363,6 +411,39 @@ export default function ComplaintDetail() {
                     )}
                   </div>
                 )}
+
+                {/* Completion Section */}
+                <div style={styles.card}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                    <div style={{ ...styles.iconBadge, backgroundColor: complaint.status === 'COMPLETED' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(100, 116, 139, 0.1)', color: complaint.status === 'COMPLETED' ? '#10b981' : '#64748b' }}>
+                      {complaint.status === 'COMPLETED' ? '✅' : '⏳'}
+                    </div>
+                    <h3 style={styles.cardTitle}>Completion</h3>
+                  </div>
+                  {complaint.status === 'COMPLETED' ? (
+                    <div>
+                      {complaint.completion_image && (
+                        <div style={styles.imageContainer}>
+                          <img src={complaint.completion_image} alt="Completion" style={styles.complaintImage} />
+                        </div>
+                      )}
+                      {complaint.completion_note ? (
+                        <div style={{ ...styles.completionNote, marginTop: complaint.completion_image ? '16px' : '0' }}>
+                          <p style={{ fontSize: '14px', color: '#cbd5e1', lineHeight: '1.6' }}>
+                            <strong style={{ color: '#f1f5f9' }}>Worker's Note:</strong><br />
+                            {complaint.completion_note}
+                          </p>
+                        </div>
+                      ) : (
+                        <p style={{ fontSize: '14px', color: '#94a3b8', fontStyle: 'italic' }}>No completion note provided</p>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{ padding: '20px', textAlign: 'center', backgroundColor: '#1e293b', borderRadius: '8px' }}>
+                      <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0 }}>Not completed yet</p>
+                    </div>
+                  )}
+                </div>
 
                 {/* Location Map */}
                 {complaint.latitude && complaint.longitude && (
@@ -511,16 +592,69 @@ export default function ComplaintDetail() {
         {/* Modals */}
         {showAssignModal && (
           <Modal title="Assign to Worker" onClose={() => setShowAssignModal(false)}>
-            <select 
-              value={selectedWorker} 
-              onChange={(e) => setSelectedWorker(e.target.value)}
-              style={styles.modalSelect}
-            >
-              <option value="">Select a worker</option>
-              {workers.map(w => (
-                <option key={w.id} value={w.id}>{w.name} - {w.department}</option>
-              ))}
-            </select>
+            <div style={styles.workerTableContainer}>
+              {workers.length === 0 ? (
+                <p style={{ textAlign: 'center', color: '#94a3b8', padding: '20px' }}>
+                  No workers available in this department
+                </p>
+              ) : (
+                <table style={styles.workerTable}>
+                  <thead>
+                    <tr>
+                      <th style={styles.workerTableHeader}>Select</th>
+                      <th style={styles.workerTableHeader}>ID</th>
+                      <th style={styles.workerTableHeader}>Name</th>
+                      <th style={styles.workerTableHeader}>Active</th>
+                      <th style={styles.workerTableHeader}>Completed</th>
+                      <th style={styles.workerTableHeader}>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {workers.map(worker => {
+                      const stats = workerStats[worker.id] || { active_assignments: 0, completed_assignments: 0, total_assignments: 0 };
+                      return (
+                        <tr 
+                          key={worker.id} 
+                          style={{
+                            ...styles.workerTableRow,
+                            backgroundColor: selectedWorker === worker.id ? '#3b82f620' : 'transparent'
+                          }}
+                          onClick={() => setSelectedWorker(worker.id)}
+                        >
+                          <td style={styles.workerTableCell}>
+                            <input 
+                              type="radio" 
+                              name="worker" 
+                              checked={selectedWorker === worker.id}
+                              onChange={() => setSelectedWorker(worker.id)}
+                              style={{ cursor: 'pointer' }}
+                            />
+                          </td>
+                          <td style={styles.workerTableCell}>{worker.id}</td>
+                          <td style={styles.workerTableCell}>
+                            <div style={{ fontWeight: '600' }}>
+                              {worker.first_name} {worker.last_name}
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#94a3b8' }}>
+                              {worker.role || 'Worker'}
+                            </div>
+                          </td>
+                          <td style={{ ...styles.workerTableCell, color: '#f59e0b', fontWeight: '600' }}>
+                            {stats.active_assignments}
+                          </td>
+                          <td style={{ ...styles.workerTableCell, color: '#10b981', fontWeight: '600' }}>
+                            {stats.completed_assignments}
+                          </td>
+                          <td style={{ ...styles.workerTableCell, fontWeight: '600' }}>
+                            {stats.total_assignments}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
             <textarea
               placeholder="Additional notes (optional)"
               value={actionNotes}
@@ -529,7 +663,7 @@ export default function ComplaintDetail() {
             />
             <div style={styles.modalActions}>
               <button onClick={() => setShowAssignModal(false)} style={styles.cancelButton}>Cancel</button>
-              <button onClick={handleAssign} style={styles.confirmButton} disabled={processing}>
+              <button onClick={handleAssign} style={styles.confirmButton} disabled={processing || !selectedWorker}>
                 {processing ? 'Assigning...' : 'Assign'}
               </button>
             </div>
@@ -691,7 +825,7 @@ const styles = {
   workerLabel: { fontSize: '13px', color: 'var(--text-secondary)', fontWeight: '600' },
   workerValue: { fontSize: '14px', color: 'var(--text-primary)', fontWeight: '600' },
   modalOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 },
-  modal: { background: 'var(--bg-card)', borderRadius: 'var(--radius-xl)', maxWidth: '500px', width: '90%', maxHeight: '90vh', overflow: 'auto', border: '1px solid var(--border-primary)' },
+  modal: { background: 'var(--bg-card)', borderRadius: 'var(--radius-xl)', maxWidth: '800px', width: '90%', maxHeight: '90vh', overflow: 'auto', border: '1px solid var(--border-primary)' },
   modalHeader: { padding: '20px', borderBottom: '1px solid var(--border-primary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
   modalTitle: { fontSize: '18px', fontWeight: '600', margin: 0, color: 'var(--text-primary)' },
   modalClose: { background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: 'var(--text-secondary)' },
@@ -723,5 +857,11 @@ const styles = {
   timerStat: { textAlign: 'center', padding: '12px', backgroundColor: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-primary)' },
   timerStatLabel: { fontSize: '11px', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' },
   timerStatValue: { fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)' },
-  escalationWarning: { marginTop: '16px', padding: '12px 16px', background: 'rgba(220, 38, 38, 0.1)', border: '1px solid rgba(220, 38, 38, 0.3)', borderRadius: '8px', fontSize: '14px', fontWeight: '600', color: '#dc2626', textAlign: 'center' }
+  escalationWarning: { marginTop: '16px', padding: '12px 16px', background: 'rgba(220, 38, 38, 0.1)', border: '1px solid rgba(220, 38, 38, 0.3)', borderRadius: '8px', fontSize: '14px', fontWeight: '600', color: '#dc2626', textAlign: 'center' },
+  // Worker table styles
+  workerTableContainer: { maxHeight: '400px', overflowY: 'auto', marginBottom: '16px', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-md)' },
+  workerTable: { width: '100%', borderCollapse: 'collapse', fontSize: '14px' },
+  workerTableHeader: { position: 'sticky', top: 0, padding: '12px', textAlign: 'left', fontWeight: '600', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px', backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)', borderBottom: '2px solid var(--border-primary)', zIndex: 1 },
+  workerTableRow: { cursor: 'pointer', transition: 'background-color 0.2s', borderBottom: '1px solid var(--border-primary)' },
+  workerTableCell: { padding: '14px 12px', color: 'var(--text-primary)', fontSize: '14px' }
 };

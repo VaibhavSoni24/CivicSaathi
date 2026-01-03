@@ -215,7 +215,7 @@ export default function AdminAttendance() {
                         key={worker.worker_id} 
                         style={{
                           ...styles.tableRow,
-                          backgroundColor: worker.status === 'PRESENT' ? '#f0fdf4' : '#fef2f2'
+                          backgroundColor: worker.status === 'PRESENT' ? '#064e3b20' : '#7f1d1d20'
                         }}
                       >
                         <td style={styles.tableCell}>
@@ -238,8 +238,8 @@ export default function AdminAttendance() {
                         <td style={styles.tableCell}>
                           <span style={{
                             ...styles.statusBadge,
-                            backgroundColor: worker.status === 'PRESENT' ? '#d1fae5' : '#fee2e2',
-                            color: worker.status === 'PRESENT' ? '#065f46' : '#991b1b'
+                            backgroundColor: worker.status === 'PRESENT' ? '#064e3b' : '#7f1d1d',
+                            color: worker.status === 'PRESENT' ? '#6ee7b7' : '#fca5a5'
                           }}>
                             {worker.status}
                           </span>
@@ -264,35 +264,35 @@ export default function AdminAttendance() {
 }
 
 const styles = {
-  container: { minHeight: '100vh', backgroundColor: '#f9fafb' },
+  container: { minHeight: '100vh', backgroundColor: '#0f172a' },
   main: { paddingTop: '70px' },
   content: { maxWidth: '1400px', margin: '0 auto', padding: '30px 20px' },
-  loadingContainer: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: '28px', fontWeight: '700', color: '#111827', margin: '0 0 8px 0' },
-  subtitle: { fontSize: '14px', color: '#6b7280', marginBottom: '30px' },
-  filterCard: { background: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '20px' },
+  loadingContainer: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0f172a' },
+  title: { fontSize: '28px', fontWeight: '700', color: '#f1f5f9', margin: '0 0 8px 0' },
+  subtitle: { fontSize: '14px', color: '#94a3b8', marginBottom: '30px' },
+  filterCard: { background: '#1e293b', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.3)', marginBottom: '20px', border: '1px solid #334155' },
   filterGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' },
   inputGroup: { display: 'flex', flexDirection: 'column', gap: '8px' },
-  label: { fontSize: '14px', fontWeight: '600', color: '#374151' },
-  select: { padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', backgroundColor: 'white', cursor: 'pointer' },
-  input: { padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' },
-  summaryCard: { background: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '20px' },
+  label: { fontSize: '14px', fontWeight: '600', color: '#f1f5f9' },
+  select: { padding: '12px', border: '1px solid #334155', borderRadius: '8px', fontSize: '14px', backgroundColor: '#0f172a', color: '#f1f5f9', cursor: 'pointer' },
+  input: { padding: '12px', border: '1px solid #334155', borderRadius: '8px', fontSize: '14px', backgroundColor: '#0f172a', color: '#f1f5f9' },
+  summaryCard: { background: '#1e293b', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.3)', marginBottom: '20px', border: '1px solid #334155' },
   summaryGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' },
   summaryItem: { textAlign: 'center' },
   summaryValue: { display: 'block', fontSize: '36px', fontWeight: '700', color: '#3b82f6', marginBottom: '4px' },
-  summaryLabel: { display: 'block', fontSize: '14px', color: '#6b7280', fontWeight: '500' },
+  summaryLabel: { display: 'block', fontSize: '14px', color: '#94a3b8', fontWeight: '500' },
   actionBar: { display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' },
-  selectAllButton: { padding: '12px 24px', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.2s' },
+  selectAllButton: { padding: '12px 24px', background: '#334155', color: '#f1f5f9', border: '1px solid #475569', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.2s' },
   markPresentButton: { padding: '12px 24px', background: '#10b981', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'all 0.2s' },
-  loadingCard: { background: 'white', borderRadius: '12px', padding: '40px', textAlign: 'center', color: '#6b7280', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' },
-  emptyState: { background: 'white', borderRadius: '12px', padding: '60px 20px', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' },
-  registerTable: { background: 'white', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'auto' },
+  loadingCard: { background: '#1e293b', borderRadius: '12px', padding: '40px', textAlign: 'center', color: '#94a3b8', boxShadow: '0 1px 3px rgba(0,0,0,0.3)', border: '1px solid #334155' },
+  emptyState: { background: '#1e293b', borderRadius: '12px', padding: '60px 20px', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.3)', border: '1px solid #334155', color: '#94a3b8' },
+  registerTable: { background: '#1e293b', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.3)', overflow: 'auto', border: '1px solid #334155' },
   table: { width: '100%', borderCollapse: 'collapse', fontSize: '14px' },
-  tableHeaderRow: { background: '#f9fafb', borderBottom: '2px solid #e5e7eb' },
-  tableHeader: { padding: '16px 12px', textAlign: 'left', fontWeight: '600', color: '#374151', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.05em' },
-  tableRow: { borderBottom: '1px solid #e5e7eb', transition: 'background-color 0.2s' },
-  tableCell: { padding: '16px 12px', color: '#374151' },
+  tableHeaderRow: { background: '#0f172a', borderBottom: '2px solid #334155' },
+  tableHeader: { padding: '16px 12px', textAlign: 'left', fontWeight: '600', color: '#f1f5f9', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.05em' },
+  tableRow: { borderBottom: '1px solid #334155', transition: 'background-color 0.2s' },
+  tableCell: { padding: '16px 12px', color: '#f1f5f9' },
   checkbox: { width: '18px', height: '18px', cursor: 'pointer' },
-  username: { fontSize: '12px', color: '#6b7280', marginTop: '2px' },
+  username: { fontSize: '12px', color: '#94a3b8', marginTop: '2px' },
   statusBadge: { display: 'inline-block', padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: '600' }
 };
