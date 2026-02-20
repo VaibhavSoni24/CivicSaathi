@@ -1399,6 +1399,69 @@ def create_office(request):
         )
 
 
+@api_view(['PUT', 'PATCH'])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def update_office(request, pk):
+    """Update an existing office"""
+    try:
+        office = Office.objects.get(id=pk)
+    except Office.DoesNotExist:
+        return Response({'error': 'Office not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    name = request.data.get('name', office.name)
+    city = request.data.get('city', office.city)
+    state = request.data.get('state', office.state)
+    address = request.data.get('address', office.address)
+    pincode = request.data.get('pincode', office.pincode)
+    phone = request.data.get('phone', office.phone)
+    email = request.data.get('email', office.email)
+    office_hours = request.data.get('office_hours', office.office_hours)
+    is_active = request.data.get('is_active', office.is_active)
+
+    # If department_id provided, validate and update
+    department_id = request.data.get('department_id')
+    if department_id:
+        try:
+            department = Department.objects.get(id=department_id)
+            # Only check uniqueness if city or department changed
+            if department != office.department or city.lower() != office.city.lower():
+                if Office.objects.filter(department=department, city__iexact=city).exclude(id=pk).exists():
+                    return Response(
+                        {'error': f'An office for {department.name} in {city} already exists'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            office.department = department
+        except Department.DoesNotExist:
+            return Response({'error': 'Department not found'}, status=status.HTTP_404_NOT_FOUND)
+    elif city.lower() != office.city.lower():
+        # city changed but department didn't – still check duplicate
+        if Office.objects.filter(department=office.department, city__iexact=city).exclude(id=pk).exists():
+            return Response(
+                {'error': f'An office for {office.department.name} in {city} already exists'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    try:
+        office.name = name
+        office.city = city
+        office.state = state
+        office.address = address
+        office.pincode = pincode
+        office.phone = phone
+        office.email = email
+        office.office_hours = office_hours
+        if isinstance(is_active, bool):
+            office.is_active = is_active
+        elif isinstance(is_active, str):
+            office.is_active = is_active.lower() == 'true'
+        office.save()
+        serializer = OfficeSerializer(office)
+        return Response(serializer.data)
+    except Exception as e:
+        return Response({'error': f'Failed to update office: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def dashboard_stats(request):

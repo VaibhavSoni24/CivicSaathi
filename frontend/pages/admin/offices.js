@@ -141,12 +141,14 @@ export default function AdminOffices() {
                         {office.is_active ? '🟢 Active' : '🔴 Inactive'}
                       </span>
                     </div>
-                    <button 
-                      onClick={() => router.push(`/admin/offices/${office.id}`)} 
-                      style={styles.viewButton}
-                    >
-                      View Details
-                    </button>
+                    <div style={styles.cardActions}>
+                      <button 
+                        onClick={() => router.push(`/admin/offices/${office.id}`)} 
+                        style={styles.viewButton}
+                      >
+                        View Details →
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -169,21 +171,22 @@ const styles = {
   addButton: { padding: '12px 24px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', textDecoration: 'none', display: 'inline-block', transition: 'background 0.2s' },
   filterBar: { display: 'flex', gap: '12px', marginBottom: '24px' },
   filterInput: { flex: 1, padding: '10px 14px', border: '1px solid #334155', borderRadius: '8px', fontSize: '14px', outline: 'none', backgroundColor: '#1e293b', color: '#f1f5f9' },
-  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' },
-  card: { background: '#1e293b', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.3)', overflow: 'hidden', transition: 'box-shadow 0.2s', border: '1px solid #334155' },
+  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px', alignItems: 'stretch' },
+  card: { background: '#1e293b', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.3)', overflow: 'hidden', transition: 'box-shadow 0.2s', border: '1px solid #334155', display: 'flex', flexDirection: 'column' },
   cardHeader: { padding: '20px 20px 12px 20px', borderBottom: '1px solid #334155' },
-  cardTitle: { fontSize: '18px', fontWeight: '600', color: '#f1f5f9', margin: '0 0 8px 0' },
+  cardTitle: { fontSize: '17px', fontWeight: '600', color: '#f1f5f9', margin: '0 0 8px 0', lineHeight: '1.4' },
   badge: { display: 'inline-block', padding: '4px 10px', background: '#1e3a8a', color: '#60a5fa', borderRadius: '6px', fontSize: '12px', fontWeight: '600' },
-  cardBody: { padding: '16px 20px' },
+  cardBody: { padding: '16px 20px', flex: 1 },
   infoRow: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' },
   icon: { fontSize: '16px', width: '20px' },
   infoText: { fontSize: '14px', color: '#cbd5e1', flex: 1 },
   addressRow: { display: 'flex', alignItems: 'flex-start', gap: '8px', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #334155' },
   addressText: { fontSize: '13px', color: '#94a3b8', lineHeight: '1.5', flex: 1 },
-  cardFooter: { padding: '12px 20px', background: '#0f172a', borderTop: '1px solid #334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  cardFooter: { padding: '10px 20px', background: '#0f172a', borderTop: '1px solid #334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
   footerStat: { fontSize: '13px', color: '#94a3b8', fontWeight: '500' },
   statusBadge: { fontSize: '12px', fontWeight: '600', color: '#10b981' },
-  viewButton: { width: '100%', padding: '10px', marginTop: '12px', background: '#334155', color: '#f1f5f9', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', transition: 'background 0.2s' },
+  cardActions: { padding: '14px 20px', borderTop: '1px solid #334155' },
+  viewButton: { width: '100%', padding: '10px 0', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', letterSpacing: '0.3px', transition: 'background 0.2s' },
   emptyState: { textAlign: 'center', padding: '80px 20px', background: '#1e293b', borderRadius: '12px', border: '1px solid #334155' },
   emptyIcon: { fontSize: '64px', marginBottom: '16px' },
   emptyTitle: { fontSize: '20px', fontWeight: '600', color: '#f1f5f9', margin: '0 0 8px 0' },
