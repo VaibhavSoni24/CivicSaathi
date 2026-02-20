@@ -27,6 +27,8 @@ urlpatterns = [
     path('complaints/<int:pk>/update-status/', views_api.update_complaint_status, name='update_complaint_status'),
     path('complaints/<int:pk>/reject/', views_api.reject_complaint, name='reject_complaint'),
     path('complaints/<int:pk>/delete/', views_api.delete_complaint, name='delete_complaint'),
+    path('complaints/<int:pk>/reassign/', views_api.reassign_complaint, name='reassign_complaint'),
+    path('complaints/<int:pk>/assign-office/', views_api.assign_office_to_complaint_view, name='assign_office_complaint'),
     
     # Worker
     path('worker/assignments/', views_api.worker_assignments, name='worker_assignments'),

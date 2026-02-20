@@ -12,6 +12,7 @@ export default function ComplaintDetail() {
   const { adminUser, hasPermission, isRootAdmin, isSubAdmin, canAccessDepartment, getAccessibleDepartments } = useAdminAuth();
   
   const [complaint, setComplaint] = useState(null);
+  const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [workers, setWorkers] = useState([]);
   const [workerStats, setWorkerStats] = useState({});
@@ -19,12 +20,18 @@ export default function ComplaintDetail() {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showReassignModal, setShowReassignModal] = useState(false);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [showAssignDeptModal, setShowAssignDeptModal] = useState(false);
+  const [showAssignOfficeModal, setShowAssignOfficeModal] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState('');
   const [actionNotes, setActionNotes] = useState('');
   const [slaHours, setSlaHours] = useState('');
   const [completionImage, setCompletionImage] = useState(null);
   const [processing, setProcessing] = useState(false);
   const [quickStatus, setQuickStatus] = useState('');
+  const [departments, setDepartments] = useState([]);
+  const [officeOptions, setOfficeOptions] = useState([]);
+  const [selectedDept, setSelectedDept] = useState('');
+  const [selectedOffice, setSelectedOffice] = useState('');
 
   useEffect(() => {
     if (id && adminUser) {
@@ -38,10 +45,22 @@ export default function ComplaintDetail() {
     }
   }, [complaint, showAssignModal]);
 
+  useEffect(() => {
+    if (complaint && showAssignDeptModal) fetchDepartments();
+  }, [complaint, showAssignDeptModal]);
+
+  useEffect(() => {
+    if (complaint && showAssignOfficeModal) fetchOfficesForDept();
+  }, [complaint, showAssignOfficeModal]);
+
   const fetchComplaintDetail = async () => {
     try {
-      const response = await adminComplaintAPI.getComplaintDetail(id);
-      setComplaint(response.data);
+      const [complaintResponse, logsResponse] = await Promise.all([
+        adminComplaintAPI.getComplaintDetail(id),
+        adminComplaintAPI.getComplaintLogs(id).catch(() => ({ data: [] })),
+      ]);
+      setComplaint(complaintResponse.data);
+      setLogs(logsResponse.data || []);
     } catch (error) {
       console.error('Error fetching complaint:', error);
       alert('Failed to load complaint details');
@@ -257,6 +276,64 @@ export default function ComplaintDetail() {
     }
   };
 
+  const fetchDepartments = async () => {
+    try {
+      const res = await fetch('http://localhost:8000/api/departments/');
+      const data = await res.json();
+      setDepartments(data);
+    } catch (e) {
+      console.error('Failed to fetch departments:', e);
+    }
+  };
+
+  const fetchOfficesForDept = async () => {
+    try {
+      const deptId = complaint?.department?.id || complaint?.department;
+      const url = deptId
+        ? `http://localhost:8000/api/offices/?department_id=${deptId}`
+        : 'http://localhost:8000/api/offices/';
+      const res = await fetch(url);
+      const data = await res.json();
+      setOfficeOptions(data);
+    } catch (e) {
+      console.error('Failed to fetch offices:', e);
+    }
+  };
+
+  const handleAssignDepartment = async () => {
+    if (!selectedDept) { alert('Please select a department'); return; }
+    setProcessing(true);
+    try {
+      await adminComplaintAPI.reassignDepartment(id, parseInt(selectedDept), actionNotes);
+      alert('Department assigned successfully');
+      setShowAssignDeptModal(false);
+      setSelectedDept('');
+      setActionNotes('');
+      await fetchComplaintDetail();
+    } catch (e) {
+      alert('Failed to assign department: ' + (e.response?.data?.error || e.message));
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleAssignOffice = async () => {
+    if (!selectedOffice) { alert('Please select an office'); return; }
+    setProcessing(true);
+    try {
+      await adminComplaintAPI.assignOffice(id, parseInt(selectedOffice), actionNotes);
+      alert('Office assigned successfully');
+      setShowAssignOfficeModal(false);
+      setSelectedOffice('');
+      setActionNotes('');
+      await fetchComplaintDetail();
+    } catch (e) {
+      alert('Failed to assign office: ' + (e.response?.data?.error || e.message));
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   if (loading) {
     return (
       <div style={styles.loadingContainer}>
@@ -365,24 +442,6 @@ export default function ComplaintDetail() {
                   </div>
                 )}
 
-                {/* Completion Image */}
-                {complaint.completion_image && (
-                  <div style={styles.card}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-                      <div style={{ ...styles.iconBadge, backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>✅</div>
-                      <h3 style={styles.cardTitle}>Completion Photo</h3>
-                    </div>
-                    <div style={styles.imageContainer}>
-                      <img src={complaint.completion_image} alt="Completion" style={styles.complaintImage} />
-                    </div>
-                    {complaint.completion_note && (
-                      <div style={styles.completionNote}>
-                        <p><strong>Note:</strong> {complaint.completion_note}</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
                 {/* Completion Section */}
                 <div style={styles.card}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
@@ -488,47 +547,30 @@ export default function ComplaintDetail() {
                   </div>
                   
                   <div style={styles.actionsContainer}>
-                    {/* Verify */}
-                    {hasPermission('VERIFY_COMPLAINTS') && complaint.status === 'PENDING' && (
-                      <button onClick={handleVerify} style={styles.actionButton} disabled={processing}>
-                        ✅ Verify Complaint
-                      </button>
-                    )}
+                    {/* Assign Department */}
+                    <button onClick={() => setShowAssignDeptModal(true)} style={styles.actionButton} disabled={processing}>
+                      🏢 Assign Department
+                    </button>
 
-                    {/* Assign to Worker */}
-                    {hasPermission('ASSIGN_TO_WORKERS') && ['PENDING', 'VERIFIED'].includes(complaint.status) && (
-                      <button onClick={() => setShowAssignModal(true)} style={styles.actionButton}>
-                        👷 Assign to Worker
-                      </button>
-                    )}
+                    {/* Assign Office */}
+                    <button onClick={() => setShowAssignOfficeModal(true)} style={styles.actionButton} disabled={processing}>
+                      🏫 Assign Office
+                    </button>
 
-                    {/* Mark Completed */}
-                    {hasPermission('MARK_COMPLETED') && complaint.status === 'IN_PROCESS' && (
-                      <button onClick={() => setShowCompletionModal(true)} style={{...styles.actionButton, background: '#10b981'}}>
-                        ✓ Mark as Completed
-                      </button>
-                    )}
-
-                    {/* Reassign Department */}
-                    {(isRootAdmin || isSubAdmin) && (
-                      <button onClick={() => setShowReassignModal(true)} style={styles.actionButton}>
-                        🔄 Reassign Department
-                      </button>
-                    )}
+                    {/* Assign Worker */}
+                    <button onClick={() => setShowAssignModal(true)} style={styles.actionButton} disabled={processing}>
+                      👷 Assign Worker
+                    </button>
 
                     {/* Reject */}
-                    {hasPermission('REJECT_COMPLAINTS') && !['REJECTED', 'SOLVED'].includes(complaint.status) && (
-                      <button onClick={() => setShowRejectModal(true)} style={{...styles.actionButton, background: '#ef4444'}}>
-                        ❌ Reject Complaint
-                      </button>
-                    )}
+                    <button onClick={() => setShowRejectModal(true)} style={{...styles.actionButton, background: '#ef4444'}} disabled={processing}>
+                      ❌ Reject Complaint
+                    </button>
 
                     {/* Delete */}
-                    {(isRootAdmin || isSubAdmin) && hasPermission('DELETE_INVALID') && (
-                      <button onClick={handleDelete} style={{...styles.actionButton, background: '#dc2626', marginTop: '20px'}}>
-                        🗑️ Delete Complaint
-                      </button>
-                    )}
+                    <button onClick={handleDelete} style={{...styles.actionButton, background: '#dc2626', marginTop: '8px'}} disabled={processing}>
+                      🗑️ Delete Complaint
+                    </button>
                   </div>
                 </div>
 
@@ -555,6 +597,51 @@ export default function ComplaintDetail() {
                     </div>
                   </div>
                 )}
+
+                {/* Activity Log */}
+                <div style={styles.card}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+                    <div style={{ ...styles.iconBadge, backgroundColor: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' }}>📋</div>
+                    <h3 style={styles.cardTitle}>Activity Log</h3>
+                    <span style={styles.logCount}>{logs.length + 1} event{logs.length !== 0 ? 's' : ''}</span>
+                  </div>
+                  <div style={styles.logsList}>
+                    {/* Initial submission event */}
+                    <div style={styles.logItem}>
+                      <div style={styles.logDotFirst}></div>
+                      <div style={styles.logContent}>
+                        <p style={styles.logAction}>Complaint submitted</p>
+                        <p style={styles.logTime}>
+                          {new Date(complaint.created_at).toLocaleString('en-IN', {
+                            day: 'numeric', month: 'short', year: 'numeric',
+                            hour: '2-digit', minute: '2-digit'
+                          })}
+                        </p>
+                        {complaint.filter_reason && (
+                          <p style={styles.logNote}>{complaint.filter_reason}</p>
+                        )}
+                      </div>
+                    </div>
+                    {[...logs].reverse().map((log, index) => (
+                      <div key={index} style={styles.logItem}>
+                        <div style={styles.logDot}></div>
+                        <div style={styles.logContent}>
+                          <p style={styles.logAction}>{log.action}</p>
+                          <p style={styles.logTime}>
+                            {new Date(log.timestamp).toLocaleString('en-IN', {
+                              day: 'numeric', month: 'short', year: 'numeric',
+                              hour: '2-digit', minute: '2-digit'
+                            })}
+                          </p>
+                          {log.action_by_username && log.action_by_username !== 'System' && (
+                            <p style={styles.logBy}>by {log.action_by_username}</p>
+                          )}
+                          {log.note && <p style={styles.logNote}>{log.note}</p>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -689,28 +776,66 @@ export default function ComplaintDetail() {
           </Modal>
         )}
 
-        {showReassignModal && (
-          <Modal title="Reassign to Department" onClose={() => setShowReassignModal(false)}>
-            <select 
-              value={selectedWorker} 
-              onChange={(e) => setSelectedWorker(e.target.value)}
+        {showAssignDeptModal && (
+          <Modal title="Assign Department" onClose={() => { setShowAssignDeptModal(false); setSelectedDept(''); setActionNotes(''); }}>
+            <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '12px' }}>
+              Current: <strong style={{ color: '#e2e8f0' }}>{complaint.department_name || 'Not assigned'}</strong>
+            </p>
+            <select
+              value={selectedDept}
+              onChange={(e) => setSelectedDept(e.target.value)}
               style={styles.modalSelect}
             >
-              <option value="">Select a department</option>
-              {accessibleDepts.map(dept => (
-                <option key={dept} value={dept}>{dept}</option>
+              <option value="">Select a department...</option>
+              {departments.map(dept => (
+                <option key={dept.id} value={dept.id}>{dept.name}</option>
               ))}
             </select>
             <textarea
-              placeholder="Reason for reassignment (required)"
+              placeholder="Reason for reassignment (optional)"
               value={actionNotes}
               onChange={(e) => setActionNotes(e.target.value)}
               style={styles.modalTextarea}
             />
             <div style={styles.modalActions}>
-              <button onClick={() => setShowReassignModal(false)} style={styles.cancelButton}>Cancel</button>
-              <button onClick={handleReassign} style={styles.confirmButton} disabled={processing}>
-                {processing ? 'Reassigning...' : 'Reassign'}
+              <button onClick={() => { setShowAssignDeptModal(false); setSelectedDept(''); setActionNotes(''); }} style={styles.cancelButton}>Cancel</button>
+              <button onClick={handleAssignDepartment} style={styles.confirmButton} disabled={processing || !selectedDept}>
+                {processing ? 'Assigning...' : 'Assign Department'}
+              </button>
+            </div>
+          </Modal>
+        )}
+
+        {showAssignOfficeModal && (
+          <Modal title="Assign Office" onClose={() => { setShowAssignOfficeModal(false); setSelectedOffice(''); setActionNotes(''); }}>
+            <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '12px' }}>
+              Current: <strong style={{ color: '#e2e8f0' }}>{complaint.office_name || 'Not assigned'}</strong>
+              {complaint.department_name && <span> &mdash; Dept: {complaint.department_name}</span>}
+            </p>
+            {officeOptions.length === 0 ? (
+              <p style={{ fontSize: '13px', color: '#94a3b8', padding: '12px 0' }}>No active offices found for this department.</p>
+            ) : (
+              <select
+                value={selectedOffice}
+                onChange={(e) => setSelectedOffice(e.target.value)}
+                style={styles.modalSelect}
+              >
+                <option value="">Select an office...</option>
+                {officeOptions.map(office => (
+                  <option key={office.id} value={office.id}>{office.name} — {office.city}</option>
+                ))}
+              </select>
+            )}
+            <textarea
+              placeholder="Notes (optional)"
+              value={actionNotes}
+              onChange={(e) => setActionNotes(e.target.value)}
+              style={styles.modalTextarea}
+            />
+            <div style={styles.modalActions}>
+              <button onClick={() => { setShowAssignOfficeModal(false); setSelectedOffice(''); setActionNotes(''); }} style={styles.cancelButton}>Cancel</button>
+              <button onClick={handleAssignOffice} style={styles.confirmButton} disabled={processing || !selectedOffice}>
+                {processing ? 'Assigning...' : 'Assign Office'}
               </button>
             </div>
           </Modal>
@@ -804,7 +929,7 @@ const styles = {
   complaintId: { fontSize: '13px', color: 'var(--text-secondary)', margin: 0, fontWeight: '500' },
   statusBadge: { padding: '8px 18px', borderRadius: '20px', fontSize: '12px', fontWeight: '700', border: '2px solid currentColor', textTransform: 'uppercase', letterSpacing: '0.5px' },
   statusSelect: { width: '100%', padding: '14px', border: '2px solid var(--border-secondary)', borderRadius: 'var(--radius-md)', fontSize: '14px', backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: '500', transition: 'border-color 0.2s', ':focus': { borderColor: '#4f46e5', outline: 'none' } },
-  metaGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' },
+  metaGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' },
   metaItem: { display: 'flex', gap: '12px', alignItems: 'flex-start', padding: '12px', backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-primary)' },
   metaIcon: { fontSize: '22px', flexShrink: 0 },
   metaLabel: { fontSize: '11px', color: 'var(--text-secondary)', margin: '0 0 4px 0', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.5px' },
@@ -864,5 +989,17 @@ const styles = {
   workerTable: { width: '100%', borderCollapse: 'collapse', fontSize: '14px' },
   workerTableHeader: { position: 'sticky', top: 0, padding: '12px', textAlign: 'left', fontWeight: '600', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px', backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)', borderBottom: '2px solid var(--border-primary)', zIndex: 1 },
   workerTableRow: { cursor: 'pointer', transition: 'background-color 0.2s', borderBottom: '1px solid var(--border-primary)' },
-  workerTableCell: { padding: '14px 12px', color: 'var(--text-primary)', fontSize: '14px' }
+  workerTableCell: { padding: '14px 12px', color: 'var(--text-primary)', fontSize: '14px' },
+
+  // Activity log styles
+  logCount: { marginLeft: 'auto', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', background: 'var(--bg-tertiary)', padding: '3px 10px', borderRadius: '12px', border: '1px solid var(--border-primary)' },
+  logsList: { display: 'flex', flexDirection: 'column', gap: 0, paddingLeft: '6px', borderLeft: '2px solid var(--border-primary)', marginLeft: '4px' },
+  logItem: { display: 'flex', gap: '12px', position: 'relative', paddingBottom: '20px' },
+  logDotFirst: { width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#10b981', marginTop: '4px', flexShrink: 0, marginLeft: '-7px', border: '2px solid var(--bg-card)', boxSizing: 'border-box' },
+  logDot: { width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#6366f1', marginTop: '4px', flexShrink: 0, marginLeft: '-7px', border: '2px solid var(--bg-card)', boxSizing: 'border-box' },
+  logContent: { flex: 1 },
+  logAction: { fontSize: '14px', fontWeight: '600', margin: '0 0 3px 0', color: 'var(--text-primary)' },
+  logTime: { fontSize: '12px', color: 'var(--text-secondary)', margin: '0 0 2px 0' },
+  logBy: { fontSize: '12px', color: 'var(--text-secondary)', fontStyle: 'italic', margin: '0 0 4px 0' },
+  logNote: { fontSize: '13px', color: 'var(--text-secondary)', margin: '6px 0 0 0', padding: '8px 12px', backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-primary)', lineHeight: '1.5' },
 };

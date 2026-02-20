@@ -91,7 +91,11 @@ export const adminComplaintAPI = {
       department_id: newDepartmentId, 
       reason 
     }),
-  
+
+  // Assign a specific office to a complaint
+  assignOffice: (id, officeId, notes = '') =>
+    adminApi.post(`/complaints/${id}/assign-office/`, { office_id: officeId, notes }),
+
   // Delete complaint (Sub-Admin and Root Admin only)
   deleteComplaint: (id, reason) => 
     adminApi.delete(`/complaints/${id}/delete/`, { data: { reason } }),

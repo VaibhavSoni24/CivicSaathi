@@ -662,6 +662,80 @@ def delete_complaint(request, pk):
     return Response({'message': 'Complaint deleted successfully'})
 
 
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def reassign_complaint(request, pk):
+    """Reassign complaint to a different department and auto-sort office."""
+    complaint = get_object_or_404(Complaint, pk=pk)
+    department_id = request.data.get('department_id')
+    reason = request.data.get('reason', '')
+
+    if not department_id:
+        return Response({'error': 'department_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    department = get_object_or_404(Department, pk=department_id)
+    old_dept = complaint.department
+    old_status = complaint.status
+
+    complaint.department = department
+    complaint.office = None   # clear old office; sorting layer will re-assign
+    complaint.sorted = False
+    complaint.save()
+
+    action_user = get_action_user(request)
+    ComplaintLog.objects.create(
+        complaint=complaint,
+        action_by=action_user,
+        note=f"Department reassigned from '{old_dept.name if old_dept else 'N/A'}' to '{department.name}'. Reason: {reason}",
+        old_status=old_status,
+        new_status=complaint.status,
+        new_dept=department,
+    )
+
+    # Run Sorting Layer B to auto-assign the correct office in new department
+    sorting_result = ComplaintSortingSystem.apply_office_sorting(complaint)
+    ComplaintLog.objects.create(
+        complaint=complaint,
+        action_by=action_user,
+        note=f"[Auto Office Sorting] {sorting_result['reason']}",
+        old_status=complaint.status,
+        new_status=complaint.status,
+    )
+
+    serializer = ComplaintSerializer(complaint)
+    return Response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def assign_office_to_complaint_view(request, pk):
+    """Directly assign a specific office to a complaint."""
+    complaint = get_object_or_404(Complaint, pk=pk)
+    office_id = request.data.get('office_id')
+    notes = request.data.get('notes', '')
+
+    if not office_id:
+        return Response({'error': 'office_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    office = get_object_or_404(Office, pk=office_id)
+    old_status = complaint.status
+
+    complaint.office = office
+    complaint.save(update_fields=['office', 'updated_at'])
+
+    action_user = get_action_user(request)
+    ComplaintLog.objects.create(
+        complaint=complaint,
+        action_by=action_user,
+        note=f"Office manually assigned to '{office.name}'. {notes}".strip(),
+        old_status=old_status,
+        new_status=complaint.status,
+    )
+
+    serializer = ComplaintSerializer(complaint)
+    return Response(serializer.data)
+
+
 # -------------------------
 # Worker Views
 # -------------------------
