@@ -1298,6 +1298,7 @@ def dashboard_stats(request):
             'my_pending': user_complaints.filter(status__in=['SUBMITTED', 'PENDING', 'FILTERING', 'SORTING']).count(),
             'my_in_progress': user_complaints.filter(status__in=['ASSIGNED', 'IN_PROGRESS']).count(),
             'my_completed': user_complaints.filter(status__in=['COMPLETED', 'RESOLVED']).count(),
+            'my_declined': user_complaints.filter(status__in=['DECLINED', 'REJECTED']).count(),
         }
     
     elif user.user_type == 'DEPT_ADMIN' and hasattr(user, 'departmentadminprofile'):

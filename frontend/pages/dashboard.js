@@ -23,26 +23,26 @@ export default function Dashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      const [statsResponse, complaintsResponse, myComplaintsResponse] = await Promise.all([
+      const [statsResponse, complaintsResponse] = await Promise.all([
         dashboardAPI.getStats(),
         complaintAPI.getAllComplaints(),
-        complaintAPI.getMyComplaints(),
       ]);
-      setStats(statsResponse.data);
+
+      const backendStats = statsResponse.data;
+      // Total Complaints section: all-users stats from backend
+      setStats(backendStats);
+
       const data = complaintsResponse.data.results || complaintsResponse.data;
       setRecentComplaints(Array.isArray(data) ? data.slice(0, 4) : []);
-      
-      // Calculate user's complaint stats
-      const myComplaintsData = myComplaintsResponse.data.results || myComplaintsResponse.data;
-      const myComplaintsArray = Array.isArray(myComplaintsData) ? myComplaintsData : [];
-      const userStats = {
-        total_complaints: myComplaintsArray.length,
-        pending: myComplaintsArray.filter(c => c.status === 'PENDING' || c.status === 'SUBMITTED').length,
-        in_progress: myComplaintsArray.filter(c => c.status === 'IN_PROGRESS' || c.status === 'ASSIGNED').length,
-        completed: myComplaintsArray.filter(c => c.status === 'COMPLETED' || c.status === 'RESOLVED').length,
-        declined: myComplaintsArray.filter(c => c.status === 'DECLINED' || c.status === 'REJECTED').length,
-      };
-      setMyStats(userStats);
+
+      // My Complaints section: use backend-provided my_* fields (scoped to logged-in user)
+      setMyStats({
+        total_complaints: backendStats.my_complaints || 0,
+        pending: backendStats.my_pending || 0,
+        in_progress: backendStats.my_in_progress || 0,
+        completed: backendStats.my_completed || 0,
+        declined: backendStats.my_declined || 0,
+      });
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
