@@ -203,6 +203,7 @@ class Complaint(models.Model):
         ('RESOLVED', 'Resolved'),
         ('COMPLETED', 'Completed'),
         ('REJECTED', 'Rejected'),
+        ('PENDING_VERIFICATION', 'Pending Manual Verification'),
     ]
     
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)  # citizen
@@ -433,3 +434,48 @@ class WorkerAttendance(models.Model):
     
     def __str__(self):
         return f"{self.worker.user.username} - {self.date} - {self.status}"
+
+
+# -------------------------
+# AI Verification Log (Filter B Audit Trail)
+# -------------------------
+class AIVerificationLog(models.Model):
+    """
+    Immutable audit trail for every AI-assisted verification decision.
+    Stores the AI result alongside context so admins can review
+    and override decisions. AI supports — it does not replace — human review.
+    """
+    AI_RESULT_CHOICES = [
+        ('YES', 'Genuine'),
+        ('NO', 'Not Genuine'),
+        ('ERROR', 'Verification Error (Manual Review)'),
+    ]
+
+    complaint = models.ForeignKey(
+        Complaint,
+        on_delete=models.CASCADE,
+        related_name='ai_verification_logs'
+    )
+    result = models.CharField(max_length=10, choices=AI_RESULT_CHOICES)
+    description_snapshot = models.TextField(
+        blank=True,
+        help_text="Complaint description at the time of AI verification"
+    )
+    image_path_snapshot = models.CharField(
+        max_length=500,
+        blank=True,
+        help_text="Image path used for AI verification"
+    )
+    error_detail = models.TextField(
+        blank=True,
+        help_text="Exception detail if AI call failed"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "AI Verification Log"
+        verbose_name_plural = "AI Verification Logs"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"AI Log #{self.id} — Complaint {self.complaint.id} — {self.result}"

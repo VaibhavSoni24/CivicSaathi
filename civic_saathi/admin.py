@@ -7,7 +7,7 @@ from .models import (
     Department, Officer, Worker,
     Complaint, ComplaintLog, Assignment,
     ComplaintCategory, ComplaintEscalation, SLAConfig,
-    WorkerAttendance, CustomUser
+    WorkerAttendance, CustomUser, AIVerificationLog
 )
 
 admin.site.site_header = "Municipal Governance Panel"
@@ -431,5 +431,30 @@ class ComplaintLogAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         return False
     
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+# -----------------------------
+# AI Verification Log (Filter B Audit Trail)
+# -----------------------------
+@admin.register(AIVerificationLog)
+class AIVerificationLogAdmin(admin.ModelAdmin):
+    """Read-only audit trail for every AI-assisted verification decision."""
+    list_display = ('id', 'complaint', 'result', 'image_path_snapshot', 'created_at')
+    list_filter = ('result', 'created_at')
+    search_fields = ('complaint__title', 'description_snapshot')
+    readonly_fields = (
+        'complaint', 'result', 'description_snapshot',
+        'image_path_snapshot', 'error_detail', 'created_at'
+    )
+    ordering = ('-created_at',)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
     def has_delete_permission(self, request, obj=None):
         return False

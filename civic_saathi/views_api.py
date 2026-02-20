@@ -11,7 +11,8 @@ from datetime import datetime
 
 from .models import (
     CustomUser, Complaint, ComplaintLog, ComplaintVote, ComplaintCategory,
-    Department, SubAdminCategory, Worker, WorkerAttendance, DepartmentAttendance, Office, SLAConfig
+    Department, SubAdminCategory, Worker, WorkerAttendance, DepartmentAttendance, Office, SLAConfig,
+    AIVerificationLog
 )
 from .serializers import (
     UserSerializer, UserRegistrationSerializer, LoginSerializer,
@@ -21,6 +22,7 @@ from .serializers import (
     WorkerSerializer, WorkerAttendanceSerializer, DepartmentAttendanceSerializer, OfficeSerializer
 )
 from .filter_system import ComplaintFilterSystem, ComplaintSortingSystem, ComplaintAssignmentSystem
+from .ai_filter import is_complaint_genuine  # Filter B: AI-assisted visual verification
 from .permissions import IsAdmin, IsSubAdmin, IsDepartmentAdmin, IsCitizen
 from .admin_auth import AdminTokenAuthentication
 from .email_service import (
@@ -201,7 +203,7 @@ class ComplaintCreateView(generics.CreateAPIView):
     def perform_create(self, serializer):
         complaint = serializer.save(user=self.request.user)
         
-        # Run through filter system
+        # ── Filter A: Rule-based NLP check ──────────────────────────────────────
         validation_result = ComplaintFilterSystem.validate_complaint(complaint)
         
         complaint.filter_checked = True
@@ -209,20 +211,83 @@ class ComplaintCreateView(generics.CreateAPIView):
         complaint.filter_reason = validation_result['reason']
         complaint.is_spam = validation_result['is_spam']
         
-        if validation_result['passed']:
-            complaint.status = 'FILTERING'
-            # Auto-sort the complaint
-            ComplaintSortingSystem.sort_complaint(complaint)
-            # Auto-assign based on location
-            ComplaintAssignmentSystem.assign_complaint(
-                complaint, 
-                complaint.city, 
-                complaint.state
-            )
-            # Auto-assign office based on location
-            assign_office_to_complaint(complaint)
-        else:
+        if not validation_result['passed']:
             complaint.status = 'DECLINED'
+            complaint.save()
+            ComplaintLog.objects.create(
+                complaint=complaint,
+                action_by=self.request.user,
+                note=f"Filter A rejected complaint. Reason: {validation_result['reason']}",
+                new_status=complaint.status
+            )
+            send_complaint_created_email(complaint)
+            return
+
+        # ── Filter B: AI-assisted visual verification (Gemini Vision) ───────────
+        if complaint.image:
+            image_path = complaint.image.path
+            description = complaint.description
+            ai_result = 'ERROR'
+            error_detail = ''
+
+            try:
+                is_valid = is_complaint_genuine(image_path, description)
+                ai_result = 'YES' if is_valid else 'NO'
+            except Exception as exc:
+                # Fail-safe: do not block complaint; route to manual review
+                error_detail = str(exc)
+                ai_result = 'ERROR'
+                is_valid = None  # unknown
+
+            # Log the AI decision for audit / transparency
+            AIVerificationLog.objects.create(
+                complaint=complaint,
+                result=ai_result,
+                description_snapshot=description,
+                image_path_snapshot=image_path,
+                error_detail=error_detail,
+            )
+
+            if ai_result == 'NO':
+                complaint.status = 'DECLINED'
+                complaint.filter_reason = (
+                    complaint.filter_reason
+                    + " | Filter B: AI-assisted verification failed — image does not match description."
+                )
+                complaint.save()
+                ComplaintLog.objects.create(
+                    complaint=complaint,
+                    action_by=self.request.user,
+                    note="Filter B (Gemini Vision) declined complaint: image does not match description.",
+                    new_status=complaint.status
+                )
+                send_complaint_created_email(complaint)
+                return
+
+            elif ai_result == 'ERROR':
+                complaint.status = 'PENDING_VERIFICATION'
+                complaint.save()
+                ComplaintLog.objects.create(
+                    complaint=complaint,
+                    action_by=self.request.user,
+                    note=f"Filter B (Gemini Vision) encountered an error; routed for manual review. Detail: {error_detail}",
+                    new_status=complaint.status
+                )
+                send_complaint_created_email(complaint)
+                return
+
+            # ai_result == 'YES' → complaint is verified; continue pipeline
+            complaint.is_genuine = True
+
+        # ── Passed both filters: sort & assign ──────────────────────────────────
+        complaint.status = 'FILTERING'
+        ComplaintSortingSystem.sort_complaint(complaint)
+        ComplaintAssignmentSystem.assign_complaint(
+            complaint,
+            complaint.city,
+            complaint.state
+        )
+        assign_office_to_complaint(complaint)
         
         complaint.save()
         
@@ -230,7 +295,7 @@ class ComplaintCreateView(generics.CreateAPIView):
         ComplaintLog.objects.create(
             complaint=complaint,
             action_by=self.request.user,
-            note=f"Complaint created and filtered. Result: {validation_result['reason']}",
+            note=f"Complaint created and passed all filters. Result: {validation_result['reason']}",
             new_status=complaint.status
         )
 
