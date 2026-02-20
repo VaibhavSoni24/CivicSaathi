@@ -19,6 +19,15 @@ export default function AdminComplaints() {
     search: ''
   });
 
+  // Pre-apply department filter from URL query param (e.g. coming from departments page)
+  useEffect(() => {
+    if (!router.isReady) return;
+    const { department } = router.query;
+    if (department) {
+      setFilters(prev => ({ ...prev, department: decodeURIComponent(department) }));
+    }
+  }, [router.isReady, router.query.department]);
+
   useEffect(() => {
     if (!loading && !adminUser) {
       router.push('/admin/login');

@@ -146,6 +146,9 @@ export default function AdminDepartments() {
                     </div>
                   </div>
 
+                  {/* Spacer pushes stats + button to the bottom */}
+                  <div style={{ flex: 1 }} />
+
                   <div style={styles.statsGrid}>
                     <div style={styles.statBox}>
                       <div style={styles.statValue}>{dept.pending}</div>
@@ -158,6 +161,10 @@ export default function AdminDepartments() {
                     <div style={styles.statBox}>
                       <div style={styles.statValue}>{dept.completed}</div>
                       <div style={styles.statLabel}>Completed</div>
+                    </div>
+                    <div style={styles.statBox}>
+                      <div style={styles.statValue}>{dept.declined}</div>
+                      <div style={styles.statLabel}>Declined</div>
                     </div>
                   </div>
 
@@ -198,14 +205,14 @@ const styles = {
   subtitle: { fontSize: '16px', color: 'var(--text-secondary)', margin: 0 },
   refreshButton: { display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', background: 'var(--bg-card)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontSize: '14px', fontWeight: '500', color: 'var(--text-primary)', transition: 'all 0.2s' },
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '24px' },
-  card: { background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', padding: '24px', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-primary)', transition: 'all 0.2s' },
+  card: { background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', padding: '24px', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-primary)', transition: 'all 0.2s', display: 'flex', flexDirection: 'column', minHeight: '240px' },
   cardHeader: { display: 'flex', alignItems: 'flex-start', gap: '16px', marginBottom: '20px' },
   iconBadge: { width: '48px', height: '48px', borderRadius: 'var(--radius-lg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', backgroundColor: 'rgba(79, 70, 229, 0.1)', border: '1px solid rgba(79, 70, 229, 0.2)', flexShrink: 0 },
   cardTitle: { fontSize: '18px', fontWeight: '600', color: 'var(--text-primary)', margin: '0 0 6px 0', lineHeight: '1.4' },
   cardSubtitle: { fontSize: '13px', color: 'var(--text-secondary)', margin: 0 },
-  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '20px', paddingTop: '16px', borderTop: '1px solid var(--border-primary)' },
-  statBox: { textAlign: 'center', padding: '12px', backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-primary)' },
-  statValue: { fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '4px' },
-  statLabel: { fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.5px' },
+  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '14px', paddingTop: '16px', borderTop: '1px solid var(--border-primary)' },
+  statBox: { textAlign: 'center', padding: '10px 4px', backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-primary)', minWidth: 0, overflow: 'hidden' },
+  statValue: { fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '3px' },
+  statLabel: { fontSize: '9px', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   viewButton: { width: '100%', padding: '12px 16px', background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)', color: 'white', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontSize: '14px', fontWeight: '600', boxShadow: '0 2px 8px rgba(79, 70, 229, 0.3)', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }
 };

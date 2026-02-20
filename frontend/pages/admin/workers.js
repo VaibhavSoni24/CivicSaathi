@@ -197,6 +197,7 @@ export default function AdminWorkers() {
                           <span style={styles.metaText}>Active Tasks: {stats.active_assignments}</span>
                         </div>
                       </div>
+                      <div style={{ flex: 1 }} />
                       <button onClick={() => router.push(`/admin/workers/${worker.id}`)} style={styles.viewButton}>
                         View Details
                       </button>
@@ -226,7 +227,7 @@ const styles = {
   filtersCard: { background: '#1e293b', borderRadius: '12px', padding: '20px', marginBottom: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.3)', border: '1px solid #334155' },
   searchInput: { width: '100%', padding: '10px 16px', border: '1px solid #334155', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', backgroundColor: '#0f172a', color: '#f1f5f9' },
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' },
-  card: { background: '#1e293b', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.3)', border: '1px solid #334155' },
+  card: { background: '#1e293b', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.3)', border: '1px solid #334155', display: 'flex', flexDirection: 'column', minHeight: '280px' },
   workerHeader: { display: 'flex', gap: '12px', marginBottom: '16px', alignItems: 'center' },
   avatar: { width: '48px', height: '48px', borderRadius: '50%', background: '#3b82f6', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: '600', flexShrink: 0 },
   cardTitle: { fontSize: '18px', fontWeight: '600', color: '#f1f5f9', margin: '0 0 4px 0' },
