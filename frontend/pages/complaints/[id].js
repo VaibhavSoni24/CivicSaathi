@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import Navbar from '../../components/Navbar';
 import { complaintAPI } from '../../utils/api';
 import Link from 'next/link';
+import SLATimerCard from '../../components/SLATimerCard';
 
 export default function ComplaintDetail() {
   const { user, loading } = useAuth();
@@ -111,83 +112,6 @@ export default function ComplaintDetail() {
             Back
           </a>
 
-          {/* SLA Deadline Display */}
-          {complaint.sla_deadline && (
-            <div className="card" style={{
-              marginBottom: '1.5rem',
-              padding: '1.5rem',
-              borderRadius: '12px',
-              border: '2px solid',
-              borderColor: (() => {
-                if (complaint.status === 'COMPLETED' || complaint.status === 'RESOLVED') return '#10b981';
-                const now = new Date();
-                const deadline = new Date(complaint.sla_deadline);
-                const hoursLeft = (deadline - now) / (1000 * 60 * 60);
-                if (hoursLeft < 0) return '#dc2626';
-                if (hoursLeft < 24) return '#ea580c';
-                if (hoursLeft < 48) return '#eab308';
-                return '#10b981';
-              })(),
-              boxShadow: '0 0 20px rgba(79, 70, 229, 0.15)'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                <span style={{ fontSize: '2rem' }}>
-                  {complaint.status === 'COMPLETED' || complaint.status === 'RESOLVED' ? '✅' : 
-                   (() => {
-                     const now = new Date();
-                     const deadline = new Date(complaint.sla_deadline);
-                     const hoursLeft = (deadline - now) / (1000 * 60 * 60);
-                     if (hoursLeft < 0) return '🚨';
-                     if (hoursLeft < 24) return '⚠️';
-                     if (hoursLeft < 48) return '⏰';
-                     return '✅';
-                   })()}
-                </span>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: '700', flex: 1, margin: 0, color: 'var(--text-primary)' }}>
-                  {complaint.status === 'COMPLETED' || complaint.status === 'RESOLVED' ? 'Completed on Time' :
-                   (() => {
-                     const now = new Date();
-                     const deadline = new Date(complaint.sla_deadline);
-                     const hoursLeft = (deadline - now) / (1000 * 60 * 60);
-                     if (hoursLeft < 0) return 'Resolution Overdue';
-                     if (hoursLeft < 24) return 'Resolution Critical';
-                     if (hoursLeft < 48) return 'Resolution Warning';
-                     return 'Resolution In Progress';
-                   })()}
-                </h3>
-              </div>
-              
-              {complaint.status !== 'COMPLETED' && complaint.status !== 'RESOLVED' && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem' }}>
-                  <div style={{ textAlign: 'center', padding: '0.75rem', backgroundColor: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-primary)' }}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
-                      {(() => {
-                        const now = new Date();
-                        const deadline = new Date(complaint.sla_deadline);
-                        const hoursLeft = (deadline - now) / (1000 * 60 * 60);
-                        return hoursLeft < 0 ? 'Overdue By' : 'Time Remaining';
-                      })()}
-                    </div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)' }}>
-                      {(() => {
-                        const now = new Date();
-                        const deadline = new Date(complaint.sla_deadline);
-                        const hoursLeft = (deadline - now) / (1000 * 60 * 60);
-                        return Math.abs(Math.round(hoursLeft)) + 'h';
-                      })()}
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'center', padding: '0.75rem', backgroundColor: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-primary)' }}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Expected By</div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)' }}>
-                      {new Date(complaint.sla_deadline).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Header */}
           <div className="card" style={styles.headerCard}>
             <div style={styles.headerTop}>
@@ -238,69 +162,8 @@ export default function ComplaintDetail() {
             </button>
           </div>
 
-          {/* SLA Timer Display */}
-          {complaint.sla_timer && (
-            <div className="card" style={{
-              ...styles.timerCard,
-              ...(complaint.sla_timer.status === 'completed' ? styles.timerCompleted :
-                  complaint.sla_timer.status === 'declined' ? styles.timerDeclined :
-                  complaint.sla_timer.status === 'pending' ? styles.timerPending :
-                  complaint.sla_timer.status === 'overdue' ? styles.timerOverdue :
-                  complaint.sla_timer.status === 'critical' ? styles.timerCritical :
-                  complaint.sla_timer.status === 'warning' ? styles.timerWarning :
-                  styles.timerOk)
-            }}>
-              <div style={styles.timerHeader}>
-                <span style={styles.timerIcon}>{complaint.sla_timer.icon}</span>
-                <h3 style={styles.timerTitle}>{complaint.sla_timer.title}</h3>
-                <span style={{
-                  ...styles.priorityBadge,
-                  backgroundColor: complaint.sla_timer.priority === 3 ? '#dc2626' : 
-                                   complaint.sla_timer.priority === 2 ? '#ea580c' : '#3b82f6'
-                }}>
-                  {complaint.sla_timer.priority_text}
-                </span>
-              </div>
-              
-              {/* Hide timer stats for declined complaints */}
-              {complaint.sla_timer.status !== 'declined' && (
-                <div style={styles.timerStats}>
-                  <div style={styles.timerStat}>
-                    <div style={styles.timerStatLabel}>
-                      {complaint.sla_timer.status === 'completed' ? 'Total Time' : 'Time Elapsed'}
-                    </div>
-                    <div style={styles.timerStatValue}>{complaint.sla_timer.hours_elapsed}h</div>
-                  </div>
-                  {complaint.sla_timer.status !== 'completed' && (
-                    <div style={styles.timerStat}>
-                      <div style={styles.timerStatLabel}>
-                        {complaint.sla_timer.is_overdue ? 'Overdue By' : 'Time Remaining'}
-                      </div>
-                      <div style={styles.timerStatValue}>
-                        {complaint.sla_timer.is_overdue ? 
-                          complaint.sla_timer.hours_overdue : 
-                          complaint.sla_timer.hours_remaining}h
-                      </div>
-                    </div>
-                  )}
-                  <div style={styles.timerStat}>
-                    <div style={styles.timerStatLabel}>SLA Deadline</div>
-                    <div style={styles.timerStatValue}>{complaint.sla_timer.escalation_deadline}h</div>
-                  </div>
-                  <div style={styles.timerStat}>
-                    <div style={styles.timerStatLabel}>Resolution Target</div>
-                    <div style={styles.timerStatValue}>{complaint.sla_timer.resolution_deadline}h</div>
-                  </div>
-                </div>
-              )}
-
-              {complaint.sla_timer.escalation_count > 0 && (
-                <div style={styles.escalationWarning}>
-                  ⚠️ This complaint has been escalated {complaint.sla_timer.escalation_count} time(s)
-                </div>
-              )}
-            </div>
-          )}
+          {/* SLA Timer */}
+          <SLATimerCard complaint={complaint} />
 
           <div style={styles.grid}>
             {/* Left Column */}

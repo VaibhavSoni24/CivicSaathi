@@ -4,6 +4,7 @@ import { useAdminAuth } from '../../../context/AdminAuthContext';
 import Head from 'next/head';
 import AdminNavbar from '../../../components/AdminNavbar';
 import { adminComplaintAPI, adminWorkerAPI } from '../../../utils/adminApi';
+import SLATimerCard from '../../../components/SLATimerCard';
 
 export default function ComplaintDetail() {
   const router = useRouter();
@@ -301,84 +302,8 @@ export default function ComplaintDetail() {
               Back to Complaints
             </button>
 
-            {/* SLA Deadline Display */}
-            {complaint.sla_deadline && (
-              <div style={{
-                ...styles.card,
-                marginBottom: '20px',
-                padding: '24px',
-                borderRadius: '12px',
-                border: '2px solid',
-                borderColor: (() => {
-                  if (complaint.status === 'COMPLETED' || complaint.status === 'RESOLVED') return '#10b981';
-                  if (!complaint.sla_deadline) return '#6b7280';
-                  const now = new Date();
-                  const deadline = new Date(complaint.sla_deadline);
-                  const hoursLeft = (deadline - now) / (1000 * 60 * 60);
-                  if (hoursLeft < 0) return '#dc2626'; // Overdue - red
-                  if (hoursLeft < 24) return '#ea580c'; // Critical - orange
-                  if (hoursLeft < 48) return '#eab308'; // Warning - yellow
-                  return '#10b981'; // OK - green
-                })(),
-                boxShadow: '0 0 20px rgba(79, 70, 229, 0.15)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
-                  <span style={{ fontSize: '32px' }}>
-                    {complaint.status === 'COMPLETED' || complaint.status === 'RESOLVED' ? '✅' : 
-                     (() => {
-                       const now = new Date();
-                       const deadline = new Date(complaint.sla_deadline);
-                       const hoursLeft = (deadline - now) / (1000 * 60 * 60);
-                       if (hoursLeft < 0) return '🚨';
-                       if (hoursLeft < 24) return '⚠️';
-                       if (hoursLeft < 48) return '⏰';
-                       return '✅';
-                     })()}
-                  </span>
-                  <h3 style={{ fontSize: '20px', fontWeight: '700', flex: 1, margin: 0, color: 'var(--text-primary)' }}>
-                    {complaint.status === 'COMPLETED' || complaint.status === 'RESOLVED' ? 'Completed on Time' :
-                     (() => {
-                       const now = new Date();
-                       const deadline = new Date(complaint.sla_deadline);
-                       const hoursLeft = (deadline - now) / (1000 * 60 * 60);
-                       if (hoursLeft < 0) return 'SLA Deadline Overdue';
-                       if (hoursLeft < 24) return 'SLA Deadline Critical';
-                       if (hoursLeft < 48) return 'SLA Deadline Warning';
-                       return 'SLA Deadline Active';
-                     })()}
-                  </h3>
-                </div>
-                
-                {complaint.status !== 'COMPLETED' && complaint.status !== 'RESOLVED' && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '16px' }}>
-                    <div style={{ textAlign: 'center', padding: '12px', backgroundColor: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-primary)' }}>
-                      <div style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
-                        {(() => {
-                          const now = new Date();
-                          const deadline = new Date(complaint.sla_deadline);
-                          const hoursLeft = (deadline - now) / (1000 * 60 * 60);
-                          return hoursLeft < 0 ? 'Overdue By' : 'Time Remaining';
-                        })()}
-                      </div>
-                      <div style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)' }}>
-                        {(() => {
-                          const now = new Date();
-                          const deadline = new Date(complaint.sla_deadline);
-                          const hoursLeft = (deadline - now) / (1000 * 60 * 60);
-                          return Math.abs(Math.round(hoursLeft)) + 'h';
-                        })()}
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'center', padding: '12px', backgroundColor: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-primary)' }}>
-                      <div style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Deadline</div>
-                      <div style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)' }}>
-                        {new Date(complaint.sla_deadline).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+            {/* SLA Timer */}
+            <SLATimerCard complaint={complaint} />
 
             <div style={styles.grid}>
               {/* Left Column - Complaint Details */}
