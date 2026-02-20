@@ -308,7 +308,35 @@ class ComplaintUpdateSerializer(serializers.ModelSerializer):
 
 
 class ComplaintLogSerializer(serializers.ModelSerializer):
-    action_by_username = serializers.CharField(source='action_by.username', read_only=True)
+    action_by_username = serializers.CharField(source='action_by.username', read_only=True, default='System')
+    action = serializers.SerializerMethodField()
+
+    STATUS_LABELS = {
+        'SUBMITTED': 'Submitted',
+        'FILTERING': 'Under Filter Check',
+        'DECLINED': 'Declined',
+        'VERIFIED': 'Verified',
+        'SORTING': 'Being Sorted',
+        'PENDING': 'Pending Assignment',
+        'ASSIGNED': 'Assigned to Worker',
+        'IN_PROGRESS': 'In Progress',
+        'RESOLVED': 'Resolved',
+        'COMPLETED': 'Completed',
+        'REJECTED': 'Rejected',
+    }
+
+    def get_action(self, obj):
+        if obj.old_status and obj.new_status and obj.old_status != obj.new_status:
+            old_label = self.STATUS_LABELS.get(obj.old_status, obj.old_status.replace('_', ' ').title())
+            new_label = self.STATUS_LABELS.get(obj.new_status, obj.new_status.replace('_', ' ').title())
+            return f'Status changed: {old_label} → {new_label}'
+        if obj.new_assignee:
+            return f'Assigned to {obj.new_assignee}'
+        if obj.old_assignee and not obj.new_assignee:
+            return f'Unassigned from {obj.old_assignee}'
+        if obj.note:
+            return obj.note
+        return 'Updated'
     
     class Meta:
         model = ComplaintLog

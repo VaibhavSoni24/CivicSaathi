@@ -431,25 +431,45 @@ export default function ComplaintDetail() {
               </div>
 
               {/* Activity Log */}
-              {logs.length > 0 && (
-                <div className="card" style={styles.section}>
-                  <h2 style={styles.sectionTitle}>Activity Log</h2>
-                  <div style={styles.logsList}>
-                    {logs.map((log, index) => (
-                      <div key={index} style={styles.logItem}>
-                        <div style={styles.logDot}></div>
-                        <div style={styles.logContent}>
-                          <p style={styles.logAction}>{log.action}</p>
-                          <p style={styles.logTime}>
-                            {new Date(log.created_at).toLocaleString()}
-                          </p>
-                          {log.notes && <p style={styles.logNotes}>{log.notes}</p>}
-                        </div>
-                      </div>
-                    ))}
+              <div className="card" style={styles.section}>
+                <h2 style={styles.sectionTitle}>Activity Log</h2>
+                <div style={styles.logsList}>
+                  {/* Always show the initial submission event */}
+                  <div style={styles.logItem}>
+                    <div style={styles.logDotFirst}></div>
+                    <div style={styles.logContent}>
+                      <p style={styles.logAction}>Complaint submitted</p>
+                      <p style={styles.logTime}>
+                        {new Date(complaint.created_at).toLocaleString('en-IN', {
+                          day: 'numeric', month: 'short', year: 'numeric',
+                          hour: '2-digit', minute: '2-digit'
+                        })}
+                      </p>
+                      {complaint.filter_reason && (
+                        <p style={styles.logNotes}>Reason: {complaint.filter_reason}</p>
+                      )}
+                    </div>
                   </div>
+                  {[...logs].reverse().map((log, index) => (
+                    <div key={index} style={styles.logItem}>
+                      <div style={styles.logDot}></div>
+                      <div style={styles.logContent}>
+                        <p style={styles.logAction}>{log.action}</p>
+                        <p style={styles.logTime}>
+                          {new Date(log.timestamp).toLocaleString('en-IN', {
+                            day: 'numeric', month: 'short', year: 'numeric',
+                            hour: '2-digit', minute: '2-digit'
+                          })}
+                        </p>
+                        {log.action_by_username && log.action_by_username !== 'System' && (
+                          <p style={styles.logBy}>by {log.action_by_username}</p>
+                        )}
+                        {log.note && <p style={styles.logNotes}>{log.note}</p>}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              )}
+              </div>
             </div>
           </div>
         </div>
@@ -626,32 +646,59 @@ const styles = {
   logsList: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '1rem',
+    gap: '0',
+    position: 'relative',
+    paddingLeft: '0.5rem',
+    borderLeft: '2px solid var(--border-color, rgba(255,255,255,0.1))',
+    marginLeft: '0.25rem',
   },
   logItem: {
     display: 'flex',
     gap: '0.75rem',
     position: 'relative',
+    paddingBottom: '1.25rem',
+  },
+  logDotFirst: {
+    width: '12px',
+    height: '12px',
+    borderRadius: '50%',
+    backgroundColor: 'var(--accent-success, #10b981)',
+    marginTop: '4px',
+    flexShrink: 0,
+    marginLeft: '-6px',
+    border: '2px solid var(--bg-card, var(--bg-secondary))',
+    boxSizing: 'border-box',
   },
   logDot: {
-    width: '10px',
-    height: '10px',
+    width: '12px',
+    height: '12px',
     borderRadius: '50%',
     backgroundColor: 'var(--accent-primary)',
-    marginTop: '6px',
+    marginTop: '4px',
     flexShrink: 0,
+    marginLeft: '-6px',
+    border: '2px solid var(--bg-card, var(--bg-secondary))',
+    boxSizing: 'border-box',
   },
   logContent: {
     flex: 1,
+    paddingBottom: '0.25rem',
   },
   logAction: {
     fontSize: '0.875rem',
-    fontWeight: '500',
-    marginBottom: '0.25rem',
+    fontWeight: '600',
+    marginBottom: '0.2rem',
+    color: 'var(--text-primary)',
   },
   logTime: {
     fontSize: '0.75rem',
     color: 'var(--text-muted)',
+    marginBottom: '0.1rem',
+  },
+  logBy: {
+    fontSize: '0.75rem',
+    color: 'var(--text-secondary)',
+    fontStyle: 'italic',
     marginBottom: '0.25rem',
   },
   logNotes: {
