@@ -103,12 +103,22 @@ def register(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login(request):
-    """User login"""
+    """User (citizen) login only"""
     username = request.data.get('username')
     password = request.data.get('password')
     
     user = authenticate(username=username, password=password)
     if user:
+        if user.user_type == 'WORKER':
+            return Response(
+                {'error': 'Worker accounts must use the Worker Login Portal.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        if user.user_type in ('ADMIN', 'SUB_ADMIN', 'DEPT_ADMIN'):
+            return Response(
+                {'error': 'Admin accounts must use the Admin Login Portal.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
         token, created = Token.objects.get_or_create(user=user)
         return Response({
             'user': UserSerializer(user).data,

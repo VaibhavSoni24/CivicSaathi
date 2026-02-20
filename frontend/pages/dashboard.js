@@ -301,7 +301,7 @@ export default function Dashboard() {
             {recentComplaints.length > 0 ? (
               <div style={styles.complaintsGrid}>
                 {recentComplaints.map((complaint) => (
-                  <Link href={`/complaints/${complaint.id}`} key={complaint.id}>
+                  <Link href={`/complaints/${complaint.id}`} key={complaint.id} style={styles.complaintLink}>
                     <div className="card" style={styles.complaintCard}>
                       <div style={styles.complaintHeader}>
                         <h3 style={styles.complaintTitle}>
@@ -310,12 +310,15 @@ export default function Dashboard() {
                             <span style={styles.demoLabel}>(demo)</span>
                           )}
                         </h3>
-                        <span className={`badge badge-${getStatusColor(complaint.status)}`}>
+                        <span
+                          className={`badge badge-${getStatusColor(complaint.status)}`}
+                          style={styles.complaintBadge}
+                        >
                           {complaint.status}
                         </span>
                       </div>
                       <p style={styles.complaintDesc}>
-                        {complaint.description?.substring(0, 100) || 'No description available'}...
+                        {complaint.description || 'No description available.'}
                       </p>
                       <div style={styles.complaintFooter}>
                         <span style={styles.complaintLocation}>
@@ -480,60 +483,94 @@ const styles = {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
     gap: '1.5rem',
+    alignItems: 'stretch',
+  },
+  complaintLink: {
+    display: 'flex',
+    textDecoration: 'none',
   },
   complaintCard: {
     cursor: 'pointer',
     transition: 'transform 0.2s',
+    display: 'flex',
+    flexDirection: 'column',
+    width: '100%',
+    overflow: 'hidden',
   },
   complaintHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: '0.75rem',
-    gap: '0.5rem',
+    gap: '0.75rem',
+    flexShrink: 0,
   },
   complaintTitle: {
-    fontSize: '1.125rem',
+    fontSize: '1rem',
     fontWeight: '600',
     flex: 1,
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
+    minWidth: 0,
+    overflow: 'hidden',
+    display: '-webkit-box',
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: 'vertical',
+    lineHeight: '1.4',
+  },
+  complaintBadge: {
+    flexShrink: 0,
+    whiteSpace: 'nowrap',
   },
   demoLabel: {
-    fontSize: '0.75rem',
+    display: 'block',
+    fontSize: '0.7rem',
     fontWeight: '400',
     color: 'var(--text-muted)',
     fontStyle: 'italic',
+    marginTop: '0.15rem',
   },
   complaintDesc: {
     color: 'var(--text-secondary)',
     fontSize: '0.875rem',
-    lineHeight: '1.5',
+    lineHeight: '1.6',
     marginBottom: '1rem',
+    flex: 1,
+    overflow: 'hidden',
+    display: '-webkit-box',
+    WebkitLineClamp: 3,
+    WebkitBoxOrient: 'vertical',
   },
   complaintFooter: {
     display: 'flex',
     justifyContent: 'flex-start',
     alignItems: 'center',
-    gap: '1rem',
+    flexWrap: 'wrap',
+    gap: '0.75rem',
     fontSize: '0.75rem',
     color: 'var(--text-muted)',
+    flexShrink: 0,
+    marginTop: 'auto',
+    paddingTop: '0.75rem',
+    borderTop: '1px solid var(--border-color, rgba(255,255,255,0.08))',
   },
   complaintLocation: {
     display: 'flex',
     alignItems: 'center',
+    overflow: 'hidden',
+    whiteSpace: 'nowrap',
+    textOverflow: 'ellipsis',
+    maxWidth: '140px',
   },
   complaintDate: {
     display: 'flex',
     alignItems: 'center',
+    whiteSpace: 'nowrap',
   },
   complaintUpvotes: {
     display: 'flex',
     alignItems: 'center',
     gap: '0.25rem',
+    marginLeft: 'auto',
   },
-  complaintDate: {},
   emptyState: {
     textAlign: 'center',
     padding: '3rem',

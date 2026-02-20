@@ -20,7 +20,14 @@ export const AuthProvider = ({ children }) => {
     if (token) {
       try {
         const response = await authAPI.getCurrentUser();
-        setUser(response.data);
+        const userData = response.data;
+        // Invalidate sessions that don't belong to citizen accounts
+        if (userData.user_type && userData.user_type !== 'CITIZEN') {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+        } else {
+          setUser(userData);
+        }
       } catch (error) {
         console.error('Auth check failed:', error);
         localStorage.removeItem('token');
@@ -35,24 +42,10 @@ export const AuthProvider = ({ children }) => {
       const response = await authAPI.login({ username, password });
       const { user, token } = response.data;
       
-      // Block admin users from logging in here
-      if (user.user_type === 'ADMIN' || user.user_type === 'SUB_ADMIN' || user.user_type === 'DEPT_ADMIN') {
-        return {
-          success: false,
-          error: 'Admin accounts cannot login here. Please use the Admin Login Portal.'
-        };
-      }
-      
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
       setUser(user);
-      
-      // Redirect based on user type
-      if (user.user_type === 'WORKER') {
-        router.push('/worker/dashboard');
-      } else {
-        router.push('/dashboard');
-      }
+      router.push('/dashboard');
       
       return { success: true };
     } catch (error) {
