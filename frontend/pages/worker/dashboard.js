@@ -76,7 +76,7 @@ export default function WorkerDashboard() {
           {/* Header */}
           <div style={styles.header}>
             <div>
-              <h1 style={styles.title}>Welcome, {worker.user?.first_name || worker.user?.username}!</h1>
+              <h1 style={styles.title}>Welcome, {worker.first_name || worker.username}!</h1>
               <p style={styles.subtitle}>
                 {worker.role || 'Worker'} • {worker.department?.name || 'Municipal Services'}
               </p>
@@ -94,11 +94,11 @@ export default function WorkerDashboard() {
               </div>
               <div>
                 <h3 style={styles.workerName}>
-                  {worker.user?.first_name} {worker.user?.last_name}
+                  {worker.first_name} {worker.last_name}
                 </h3>
                 <p style={styles.workerRole}>{worker.role || 'Municipal Worker'}</p>
-                <p style={styles.workerDept}>Department: {worker.department?.name || 'Not Assigned'}</p>
-                <p style={styles.workerOffice}>Office: {worker.office?.name || 'Not Assigned'}</p>
+                <p style={styles.workerDept}>Department: {worker.department_name || worker.department || 'Not Assigned'}</p>
+                <p style={styles.workerOffice}>Office: {worker.office_name || worker.office || 'Not Assigned'}</p>
               </div>
             </div>
           </div>

@@ -33,11 +33,20 @@ export const WorkerAuthProvider = ({ children }) => {
   const login = async (username, password) => {
     try {
       const response = await workerAuthAPI.login({ username, password });
-      const { worker, token } = response.data;
-      
+      const { user, worker, token } = response.data;
+
+      // Merge user identity fields into the worker object so name is always available
+      const workerWithUser = {
+        ...worker,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        username: user.username,
+        email: user.email,
+      };
+
       localStorage.setItem('worker_token', token);
-      localStorage.setItem('worker', JSON.stringify(worker));
-      setWorker(worker);
+      localStorage.setItem('worker', JSON.stringify(workerWithUser));
+      setWorker(workerWithUser);
       router.push('/worker/dashboard');
       
       return { success: true };

@@ -67,7 +67,7 @@ export default function WorkerNavbar() {
                   <circle cx="12" cy="7" r="4"></circle>
                 </svg>
               </div>
-              <span style={styles.userName}>{worker.user?.username || 'Worker'}</span>
+              <span style={styles.userName}>{worker.first_name || worker.username || 'Worker'}</span>
               <svg
                 width="16"
                 height="16"
@@ -84,7 +84,7 @@ export default function WorkerNavbar() {
             {showDropdown && (
               <div style={styles.dropdown}>
                 <div style={styles.dropdownHeader}>
-                  <p style={styles.dropdownName}>{worker.user?.first_name} {worker.user?.last_name}</p>
+                  <p style={styles.dropdownName}>{worker.first_name} {worker.last_name}</p>
                   <p style={styles.dropdownRole}>{worker.role || 'Worker'}</p>
                 </div>
                 <button onClick={handleLogout} style={styles.logoutButton}>
