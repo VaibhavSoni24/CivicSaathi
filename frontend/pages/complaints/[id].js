@@ -343,20 +343,6 @@ export default function ComplaintDetail() {
                 </div>
               )}
 
-              {complaint.completion_image && (
-                <div className="card" style={styles.section}>
-                  <h2 style={styles.sectionTitle}>Completion Image</h2>
-                  <img 
-                    src={complaint.completion_image.startsWith('http') ? complaint.completion_image : `http://localhost:8000${complaint.completion_image}`} 
-                    alt="Completion" 
-                    style={styles.image} 
-                  />
-                  {complaint.completion_note && (
-                    <p style={styles.completionNote}>{complaint.completion_note}</p>
-                  )}
-                </div>
-              )}
-
               {/* Completion Section */}
               <div className="card" style={styles.section}>
                 <h2 style={styles.sectionTitle}>Completion</h2>
