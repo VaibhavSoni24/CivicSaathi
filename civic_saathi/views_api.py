@@ -23,6 +23,12 @@ from .serializers import (
 from .filter_system import ComplaintFilterSystem, ComplaintSortingSystem, ComplaintAssignmentSystem
 from .permissions import IsAdmin, IsSubAdmin, IsDepartmentAdmin, IsCitizen
 from .admin_auth import AdminTokenAuthentication
+from .email_service import (
+    send_complaint_created_email,
+    send_complaint_upvoted_email,
+    send_worker_assigned_email,
+    send_completion_email,
+)
 
 
 # -------------------------
@@ -228,6 +234,9 @@ class ComplaintCreateView(generics.CreateAPIView):
             new_status=complaint.status
         )
 
+        # Send confirmation email to citizen
+        send_complaint_created_email(complaint)
+
 
 class MyComplaintsView(generics.ListAPIView):
     """Get all complaints by current user"""
@@ -313,6 +322,8 @@ def upvote_complaint(request, pk):
         # Increment upvote count
         complaint.upvote_count += 1
         complaint.save()
+        # Notify original complainant about the new upvote
+        send_complaint_upvoted_email(complaint)
         return Response({'message': 'Upvoted successfully', 'upvotes': complaint.upvote_count})
     else:
         # Remove vote
@@ -409,7 +420,10 @@ def assign_to_worker(request, pk):
         new_status='IN_PROGRESS',
         new_assignee=worker.user.username
     )
-    
+
+    # Notify citizen that a worker has been assigned
+    send_worker_assigned_email(complaint)
+
     serializer = ComplaintSerializer(complaint)
     return Response(serializer.data)
 
@@ -496,7 +510,11 @@ def update_complaint_status(request, pk):
         old_status=old_status,
         new_status=new_status
     )
-    
+
+    # Notify citizen when complaint is marked as completed
+    if new_status == 'COMPLETED':
+        send_completion_email(complaint)
+
     return Response({'message': 'Status updated successfully'})
 
 
@@ -672,7 +690,10 @@ def worker_complete_complaint(request, pk):
             new_status='COMPLETED',
             action_by=user
         )
-        
+
+        # Notify citizen of successful resolution
+        send_completion_email(complaint)
+
         serializer = ComplaintSerializer(complaint, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
     except Complaint.DoesNotExist:

@@ -8,6 +8,155 @@ from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 
 
+# ---------------------------------------------------------------------------
+# Base helper
+# ---------------------------------------------------------------------------
+
+def send_email(subject, message, recipient):
+    """Generic email sender used by all notification helpers."""
+    send_mail(
+        subject,
+        message,
+        settings.DEFAULT_FROM_EMAIL,
+        [recipient],
+        fail_silently=False,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Complaint Creation Notification
+# ---------------------------------------------------------------------------
+
+def send_complaint_created_email(complaint):
+    """Send confirmation email to citizen when a new complaint is registered."""
+    try:
+        subject = f"Complaint Registered | ID: {complaint.id}"
+        message = f"""Hello {complaint.user.first_name or complaint.user.username},
+
+Your complaint has been successfully registered.
+
+Title: {complaint.title}
+Department: {complaint.department.name if complaint.department else 'Being assigned'}
+Status: Submitted
+
+We will keep you updated on progress.
+
+– CivicSaathi
+"""
+        send_email(subject, message, complaint.user.email)
+        return True
+    except Exception as e:
+        print(f"Error sending complaint created email: {e}")
+        return False
+
+
+# ---------------------------------------------------------------------------
+# Upvote Notification
+# ---------------------------------------------------------------------------
+
+def send_complaint_upvoted_email(complaint):
+    """Notify the original complainant when their complaint receives a new upvote."""
+    try:
+        subject = "Your Complaint Received New Support"
+        message = f"""Hello {complaint.user.first_name or complaint.user.username},
+
+Your complaint "{complaint.title}" has received a new upvote.
+This increases its priority for faster resolution.
+
+Current Upvotes: {complaint.upvote_count}
+
+– CivicSaathi
+"""
+        send_email(subject, message, complaint.user.email)
+        return True
+    except Exception as e:
+        print(f"Error sending upvote email: {e}")
+        return False
+
+
+# ---------------------------------------------------------------------------
+# Worker Assignment Notification (citizen-facing)
+# ---------------------------------------------------------------------------
+
+def send_worker_assigned_email(complaint):
+    """Notify the citizen that a worker has been assigned to their complaint."""
+    try:
+        subject = "Worker Assigned to Your Complaint"
+        message = f"""Hello {complaint.user.first_name or complaint.user.username},
+
+A worker has been assigned to your complaint.
+
+Complaint: {complaint.title}
+Department: {complaint.department.name if complaint.department else 'N/A'}
+Current Status: Assigned
+
+Work will begin shortly.
+
+– CivicSaathi
+"""
+        send_email(subject, message, complaint.user.email)
+        return True
+    except Exception as e:
+        print(f"Error sending worker assigned email: {e}")
+        return False
+
+
+# ---------------------------------------------------------------------------
+# Overdue / SLA Breach Notification (citizen-facing)
+# ---------------------------------------------------------------------------
+
+def send_overdue_email(complaint):
+    """Notify the citizen that their complaint has breached its SLA deadline."""
+    try:
+        subject = "Delay Notice: Complaint Escalated"
+        message = f"""Hello {complaint.user.first_name or complaint.user.username},
+
+Your complaint "{complaint.title}" has crossed its expected resolution time.
+The issue has been escalated to senior authorities for immediate action.
+
+We apologize for the delay.
+
+– CivicSaathi
+"""
+        send_email(subject, message, complaint.user.email)
+        return True
+    except Exception as e:
+        print(f"Error sending overdue email: {e}")
+        return False
+
+
+# ---------------------------------------------------------------------------
+# Completion Notification
+# ---------------------------------------------------------------------------
+
+def send_completion_email(complaint):
+    """Notify the citizen that their complaint has been successfully resolved."""
+    try:
+        subject = "Complaint Successfully Resolved"
+        completed_on = complaint.completed_at or complaint.resolved_at
+        completed_on_str = completed_on.strftime('%Y-%m-%d %H:%M') if completed_on else 'N/A'
+        message = f"""Hello {complaint.user.first_name or complaint.user.username},
+
+Your complaint has been successfully resolved.
+
+Complaint: {complaint.title}
+Completed On: {completed_on_str}
+
+Thank you for helping improve the city.
+
+– CivicSaathi
+"""
+        send_email(subject, message, complaint.user.email)
+        return True
+    except Exception as e:
+        print(f"Error sending completion email: {e}")
+        return False
+
+
+# ---------------------------------------------------------------------------
+# Legacy / extended functions (worker/officer notifications)
+# ---------------------------------------------------------------------------
+
 def send_complaint_registered_email(complaint):
     """Send email when a new complaint is registered"""
     try:

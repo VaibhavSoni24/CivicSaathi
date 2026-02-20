@@ -6,7 +6,7 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 from datetime import timedelta
 from civic_saathi.models import Complaint, ComplaintEscalation, Officer, SLAConfig, ComplaintLog
-from civic_saathi.email_service import send_escalation_email, send_sla_warning_email
+from civic_saathi.email_service import send_escalation_email, send_sla_warning_email, send_overdue_email
 
 
 class Command(BaseCommand):
@@ -104,8 +104,11 @@ class Command(BaseCommand):
                             new_status=complaint.status,
                         )
                         
-                        # Send escalation emails
+                        # Send escalation emails (to officers/workers)
                         send_escalation_email(escalation)
+
+                        # Notify citizen that their complaint was escalated due to SLA breach
+                        send_overdue_email(complaint)
                         
                         escalated_count += 1
                         self.stdout.write(
