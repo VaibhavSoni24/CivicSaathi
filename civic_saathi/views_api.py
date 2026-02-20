@@ -44,43 +44,6 @@ def get_action_user(request):
     return request.user
 
 
-def assign_office_to_complaint(complaint):
-    """
-    Auto-assign office to complaint based on location and status.
-    Assigns if status is PENDING or complaint has passed filtering.
-    """
-    # Check if complaint should be assigned to office
-    if complaint.status not in ['PENDING', 'FILTERING', 'SORTING'] and not complaint.filter_passed:
-        return
-    
-    # Check if complaint has department and city
-    if not complaint.department or not complaint.city:
-        return
-    
-    # Try to find matching office
-    try:
-        office = Office.objects.get(
-            department=complaint.department,
-            city__iexact=complaint.city,
-            is_active=True
-        )
-        complaint.office = office
-        complaint.save()
-    except Office.DoesNotExist:
-        # No matching office found
-        pass
-    except Office.MultipleObjectsReturned:
-        # Multiple offices found, take the first one
-        office = Office.objects.filter(
-            department=complaint.department,
-            city__iexact=complaint.city,
-            is_active=True
-        ).first()
-        if office:
-            complaint.office = office
-            complaint.save()
-
-
 # -------------------------
 # Authentication Views
 # -------------------------
@@ -202,7 +165,21 @@ class ComplaintCreateView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         complaint = serializer.save(user=self.request.user)
-        
+
+        # ── Sorting Layer B prep: pin city/state from citizen's registered profile ─────
+        # The office routing in Sorting Layer B uses complaint.city to locate the
+        # correct municipal office.  We always override the submitted value with
+        # the authenticated user's registered city so complaints are never
+        # mis-routed due to a typo or deliberate change in the submission form.
+        registered_city = (self.request.user.city or '').strip()
+        registered_state = (self.request.user.state or '').strip()
+        if registered_city and (
+            complaint.city != registered_city or complaint.state != registered_state
+        ):
+            complaint.city = registered_city
+            complaint.state = registered_state
+            complaint.save(update_fields=['city', 'state', 'updated_at'])
+
         # ── Filter A: Rule-based NLP check ──────────────────────────────────────
         validation_result = ComplaintFilterSystem.validate_complaint(complaint)
         
@@ -610,10 +587,12 @@ def update_complaint_status(request, pk):
         complaint.completion_note = request.data.get('completion_note', '')
         complaint.completed_at = timezone.now()
     
-    # Auto-assign office if status is PENDING and no office assigned
+    # Sorting Layer B: auto-assign office when transitioning to PENDING
+    # (covers cases where a complaint reaches PENDING via manual admin action
+    # rather than the automated submission pipeline).
     if new_status == 'PENDING' and not complaint.office:
-        assign_office_to_complaint(complaint)
-    
+        ComplaintSortingSystem.apply_office_sorting(complaint)
+
     complaint.save()
     
     # Log the action

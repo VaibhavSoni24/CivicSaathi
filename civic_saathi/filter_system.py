@@ -159,9 +159,6 @@ class ComplaintSortingSystem:
             reason     (str)  – human-readable audit string
         """
         # ── Step 1: Resolve department ────────────────────────────────────────
-        # Import here to avoid any circular-import risk at module load time.
-        from .models import Office  # noqa: PLC0415
-
         department = None
 
         # Citizen-selected department takes priority (stored at submission).
@@ -188,35 +185,19 @@ class ComplaintSortingSystem:
         complaint.status = 'SORTING'
         complaint.save(update_fields=['department', 'status', 'updated_at'])
 
-        # ── Step 3: Find the office that serves this department in the city ──
-        office = None
-        if complaint.city:
-            try:
-                office = Office.objects.get(
-                    department=department,
-                    city__iexact=complaint.city,
-                    is_active=True,
-                )
-            except Office.DoesNotExist:
-                pass  # No office in this city – complaint still lands at department
-            except Office.MultipleObjectsReturned:
-                office = (
-                    Office.objects.filter(
-                        department=department,
-                        city__iexact=complaint.city,
-                        is_active=True,
-                    )
-                    .order_by('id')
-                    .first()
-                )
+        # ── Steps 3 & 4: Sorting Layer B – office routing ───────────────────
+        # Delegate to apply_office_sorting() to find and attach the correct
+        # municipal office for this (department, city) pair.
+        office_result = ComplaintSortingSystem.apply_office_sorting(complaint)
+        office = office_result['office']
 
-        # ── Step 4: Finalise – mark sorted, attach office, move to PENDING ───
-        complaint.office = office
+        # Finalise sort: mark sorted=True and transition status to PENDING so
+        # department admins can begin worker assignment.
         complaint.sorted = True
         complaint.status = 'PENDING'
-        complaint.save(update_fields=['office', 'sorted', 'status', 'updated_at'])
+        complaint.save(update_fields=['sorted', 'status', 'updated_at'])
 
-        office_info = f", office '{office.name}'" if office else " (no matching office registered for this city)"
+        office_info = f", office '{office.name}'" if office else " (no active office registered for this city — manual assignment required)"
         return {
             'success': True,
             'department': department,
@@ -224,6 +205,111 @@ class ComplaintSortingSystem:
             'reason': (
                 f"Automatically sorted to department '{department.name}'{office_info}. "
                 "Status updated to Pending Assignment."
+            ),
+        }
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Sorting Layer B — Office Routing
+    # ─────────────────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def apply_office_sorting(complaint):
+        """
+        Sorting Layer B: Automated Office Routing.
+
+        Routes a complaint to the correct municipal office by matching the
+        complaint's already-resolved department against all active offices
+        in the **citizen's registered city** (stored in complaint.city, which
+        is pinned from the user's profile at submission time).
+
+        Design goals
+        ────────────
+        • Eliminates manual office-assignment for standard city complaints.
+        • Prevents cross-city mis-routing by using the citizen's registered city.
+        • Can be called independently of sort_complaint() when only office
+          assignment is needed (e.g., admin triggers a status→PENDING transition
+          after the department is already known).
+        • Idempotent: safe to call multiple times; only updates the office field.
+
+        Side-effects
+        ────────────
+        • Sets complaint.office if a matching active office is found.
+        • Saves only the 'office' field to minimise DB writes.
+        • Does NOT change status or sorted flag — that is the caller's
+          responsibility (sort_complaint handles those transitions).
+
+        Returns
+        ───────
+        dict with keys:
+            success  (bool)   – True if an office was successfully matched
+            office   (Office instance | None)
+            reason   (str)    – human-readable audit/log string
+        """
+        from .models import Office  # noqa: PLC0415
+
+        # Guard: department must already be resolved (done by sort_complaint /
+        # citizen form selection) before office routing can proceed.
+        if not complaint.department_id:
+            return {
+                'success': False,
+                'office': None,
+                'reason': (
+                    'Sorting Layer B skipped: complaint has no department assigned. '
+                    'Complete department assignment first.'
+                ),
+            }
+
+        # Guard: city must be available (pinned from citizen's registered profile).
+        if not complaint.city:
+            return {
+                'success': False,
+                'office': None,
+                'reason': (
+                    'Sorting Layer B skipped: complaint city is not set. '
+                    'Unable to match a municipal office without a city.'
+                ),
+            }
+
+        office = None
+        try:
+            office = Office.objects.get(
+                department=complaint.department,
+                city__iexact=complaint.city,
+                is_active=True,
+            )
+        except Office.DoesNotExist:
+            pass  # No active office in this city for the department yet
+        except Office.MultipleObjectsReturned:
+            # More than one active office — pick the earliest registered one.
+            office = (
+                Office.objects.filter(
+                    department=complaint.department,
+                    city__iexact=complaint.city,
+                    is_active=True,
+                )
+                .order_by('id')
+                .first()
+            )
+
+        if office:
+            complaint.office = office
+            complaint.save(update_fields=['office', 'updated_at'])
+            return {
+                'success': True,
+                'office': office,
+                'reason': (
+                    f"Sorting Layer B: office '{office.name}' ({complaint.city}) "
+                    f"matched and assigned for department '{complaint.department.name}'."
+                ),
+            }
+
+        return {
+            'success': False,
+            'office': None,
+            'reason': (
+                f"Sorting Layer B: no active office found for department "
+                f"'{complaint.department.name}' in city '{complaint.city}'. "
+                "Complaint queued — manual office assignment required."
             ),
         }
 
