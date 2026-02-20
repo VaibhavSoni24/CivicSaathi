@@ -551,6 +551,7 @@ def verify_complaint(request, pk):
             'is_genuine': complaint.is_genuine,
             'department': sorting_result['department'].name if sorting_result.get('department') else None,
             'office': sorting_result['office'].name if sorting_result.get('office') else None,
+            'worker': sorting_result['worker'].user.username if sorting_result.get('worker') else None,
             'sorting_detail': sorting_result['reason'],
         })
     except Exception as e:

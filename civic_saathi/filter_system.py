@@ -191,20 +191,34 @@ class ComplaintSortingSystem:
         office_result = ComplaintSortingSystem.apply_office_sorting(complaint)
         office = office_result['office']
 
-        # Finalise sort: mark sorted=True and transition status to PENDING so
-        # department admins can begin worker assignment.
+        # ── Step 5: Worker Assignment Layer ─────────────────────────────────
+        # Attempt automated worker assignment now that department + office are
+        # both resolved.
+        assignment_result = WorkerAssignmentLayer.assign_worker(complaint)
+
+        # Finalise sort: mark sorted=True.
+        # • If a worker was auto-assigned, complaint.status is already 'ASSIGNED'
+        #   (set inside assign_worker); just persist sorted=True.
+        # • If no worker could be found, drop back to PENDING for manual routing.
         complaint.sorted = True
-        complaint.status = 'PENDING'
+        if not assignment_result['success']:
+            complaint.status = 'PENDING'
         complaint.save(update_fields=['sorted', 'status', 'updated_at'])
 
         office_info = f", office '{office.name}'" if office else " (no active office registered for this city — manual assignment required)"
+        assignment_info = (
+            f" {assignment_result['reason']}"
+            if assignment_result['success']
+            else " No available workers — status set to Pending Assignment for manual routing."
+        )
         return {
             'success': True,
             'department': department,
             'office': office,
+            'worker': assignment_result.get('worker'),
             'reason': (
-                f"Automatically sorted to department '{department.name}'{office_info}. "
-                "Status updated to Pending Assignment."
+                f"Automatically sorted to department '{department.name}'{office_info}."
+                f"{assignment_info}"
             ),
         }
 
@@ -310,6 +324,160 @@ class ComplaintSortingSystem:
                 f"Sorting Layer B: no active office found for department "
                 f"'{complaint.department.name}' in city '{complaint.city}'. "
                 "Complaint queued — manual office assignment required."
+            ),
+        }
+
+
+class WorkerAssignmentLayer:
+    """
+    Automated Worker Assignment Layer
+
+    Final routing stage in the CivicSaathi complaint pipeline.  Activates
+    only after a complaint has been sorted to a department (Sorting Layer A)
+    and a city-level office (Sorting Layer B).
+
+    Assignment algorithm
+    ────────────────────
+    1. Collects all active Workers attached to complaint.office.
+    2. Counts each worker's current active workload: complaints whose status
+       is PENDING, ASSIGNED, or IN_PROGRESS.
+    3. Selects the worker(s) with the minimum workload count.
+    4. On a tie, picks one at random to distribute work fairly.
+    5. Derives the SLA deadline from the category's SLAConfig
+       (resolution_hours); defaults to 48 h if no config exists.
+    6. Persists the assignment, creates an audit log, and notifies the citizen.
+    """
+
+    ACTIVE_STATUSES = ('PENDING', 'ASSIGNED', 'IN_PROGRESS')
+
+    @staticmethod
+    def assign_worker(complaint):
+        """
+        Assign the optimal worker to a fully-sorted complaint.
+
+        Pre-conditions (enforced internally)
+        ─────────────────────────────────────
+        • complaint.office must be set (Sorting Layer B completed).
+        • At least one active Worker must exist in that office.
+
+        Side-effects (only on success)
+        ────────────────────────────────
+        • Sets complaint.current_worker
+        • Sets complaint.status  → 'ASSIGNED'
+        • Sets complaint.assigned = True
+        • Sets complaint.sla_deadline (category SLAConfig or 48 h default)
+        • Saves the above fields atomically
+        • Creates a ComplaintLog audit entry
+        • Fires send_worker_assigned_email (non-blocking; failure is swallowed)
+
+        Returns
+        ───────
+        dict with keys:
+            success  (bool)
+            worker   (Worker instance | None)
+            reason   (str)  – human-readable audit string
+        """
+        import random                                          # noqa: PLC0415
+        from django.utils import timezone                      # noqa: PLC0415
+        from datetime import timedelta                         # noqa: PLC0415
+        from .models import Worker, Complaint, ComplaintLog    # noqa: PLC0415
+        from .email_service import send_worker_assigned_email  # noqa: PLC0415
+
+        # ── Guard: office must already be assigned ────────────────────────────
+        if not complaint.office_id:
+            return {
+                'success': False,
+                'worker': None,
+                'reason': (
+                    'Worker Assignment Layer skipped: complaint has no office assigned. '
+                    'Complete Sorting Layer B first.'
+                ),
+            }
+
+        # ── Step 1: Gather active workers for this office ─────────────────────
+        active_workers = list(
+            Worker.objects.filter(
+                office=complaint.office,
+                is_active=True,
+            ).select_related('user')
+        )
+
+        if not active_workers:
+            return {
+                'success': False,
+                'worker': None,
+                'reason': (
+                    f"Worker Assignment Layer: no active workers in office "
+                    f"'{complaint.office.name}'. Manual assignment required."
+                ),
+            }
+
+        # ── Step 2: Count active workload per worker ──────────────────────────
+        workload = {
+            w.id: Complaint.objects.filter(
+                current_worker=w,
+                status__in=WorkerAssignmentLayer.ACTIVE_STATUSES,
+                is_deleted=False,
+            ).count()
+            for w in active_workers
+        }
+
+        # ── Step 3: Select least-loaded worker; random break on tie ──────────
+        min_tasks = min(workload.values())
+        candidates = [w for w in active_workers if workload[w.id] == min_tasks]
+        selected_worker = random.choice(candidates)
+
+        # ── Step 4: Resolve SLA deadline from category config ─────────────────
+        sla_hours = 48  # safe default when no SLAConfig exists
+        if complaint.category_id and complaint.category:
+            try:
+                sla_hours = complaint.category.sla_config.resolution_hours
+            except Exception:
+                pass
+
+        sla_deadline = timezone.now() + timedelta(hours=sla_hours)
+
+        # ── Step 5: Persist assignment ─────────────────────────────────────────
+        old_status = complaint.status
+        complaint.current_worker = selected_worker
+        complaint.status = 'ASSIGNED'
+        complaint.assigned = True
+        complaint.sla_deadline = sla_deadline
+        complaint.save(update_fields=[
+            'current_worker', 'status', 'assigned', 'sla_deadline', 'updated_at'
+        ])
+
+        # ── Step 6: Audit log ─────────────────────────────────────────────────
+        ComplaintLog.objects.create(
+            complaint=complaint,
+            action_by=None,  # system-generated action
+            note=(
+                f"[Automated Worker Assignment Layer] Assigned to "
+                f"'{selected_worker.user.username}' "
+                f"(office: '{complaint.office.name}', "
+                f"workload: {min_tasks} active task(s), "
+                f"candidates in pool: {len(candidates)}, "
+                f"SLA: {sla_hours}h — deadline {sla_deadline.strftime('%d %b %Y %H:%M')})."
+            ),
+            old_status=old_status,
+            new_status='ASSIGNED',
+            new_assignee=selected_worker.user.username,
+        )
+
+        # ── Step 7: Notify citizen ─────────────────────────────────────────────
+        try:
+            send_worker_assigned_email(complaint)
+        except Exception:
+            pass  # notification failure must never block the assignment
+
+        return {
+            'success': True,
+            'worker': selected_worker,
+            'reason': (
+                f"Worker Assignment Layer: '{selected_worker.user.username}' selected "
+                f"(office: '{complaint.office.name}', "
+                f"active tasks at assignment: {min_tasks}, "
+                f"SLA: {sla_hours}h)."
             ),
         }
 
