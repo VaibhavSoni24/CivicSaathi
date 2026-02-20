@@ -117,38 +117,139 @@ class ComplaintFilterSystem:
 
 class ComplaintSortingSystem:
     """
-    Sorting system to route complaints to appropriate departments
+    Automated Department Sorting Layer
+
+    Operates after both Filter A (NLP) and Filter B (AI image verification)
+    have cleared a complaint.  It reads the department value already stored on
+    the complaint record (set by the citizen at submission time), routes the
+    complaint to that department's office in the correct city, and transitions
+    the status from SORTING → PENDING so department admins can act on it.
+
+    Design goals
+    ────────────
+    • Zero manual intervention for standard cases.
+    • Falls back to category-derived department if no direct department is set.
+    • Auto-assigns the matching city office so SLA tracking starts immediately.
+    • Returns a rich result dict so callers can log / audit every decision.
     """
-    
+
     @staticmethod
     def sort_complaint(complaint):
         """
-        Route complaint to the correct department based on category
+        Route a verified complaint to the correct municipal department.
+
+        Department resolution priority
+        ──────────────────────────────
+        1. complaint.department  – citizen-selected at submission (preferred)
+        2. complaint.category.department – derived from the complaint category
+
+        Side-effects (in order)
+        ────────────────────────
+        1. Sets status → SORTING and persists department.
+        2. Looks up the active Office for (department, city).
+        3. Sets complaint.office, complaint.sorted = True, status → PENDING.
+        4. Saves only the changed fields to minimise DB writes.
+
+        Returns
+        ───────
+        dict with keys:
+            success    (bool)
+            department (Department instance | None)
+            office     (Office instance | None)
+            reason     (str)  – human-readable audit string
         """
-        if complaint.category and complaint.category.department:
-            complaint.department = complaint.category.department
-            complaint.sorted = True
-            complaint.status = 'PENDING'
-            complaint.save()
-            return True
-        return False
+        # ── Step 1: Resolve department ────────────────────────────────────────
+        # Import here to avoid any circular-import risk at module load time.
+        from .models import Office  # noqa: PLC0415
+
+        department = None
+
+        # Citizen-selected department takes priority (stored at submission).
+        if complaint.department_id:
+            department = complaint.department
+
+        # Fall back to the department linked to the complaint's category.
+        if department is None and complaint.category_id and complaint.category:
+            department = complaint.category.department
+
+        if department is None:
+            return {
+                'success': False,
+                'department': None,
+                'office': None,
+                'reason': (
+                    'Sorting failed: no department associated with this complaint. '
+                    'Manual review required.'
+                ),
+            }
+
+        # ── Step 2: Mark as SORTING; pin the resolved department ─────────────
+        complaint.department = department
+        complaint.status = 'SORTING'
+        complaint.save(update_fields=['department', 'status', 'updated_at'])
+
+        # ── Step 3: Find the office that serves this department in the city ──
+        office = None
+        if complaint.city:
+            try:
+                office = Office.objects.get(
+                    department=department,
+                    city__iexact=complaint.city,
+                    is_active=True,
+                )
+            except Office.DoesNotExist:
+                pass  # No office in this city – complaint still lands at department
+            except Office.MultipleObjectsReturned:
+                office = (
+                    Office.objects.filter(
+                        department=department,
+                        city__iexact=complaint.city,
+                        is_active=True,
+                    )
+                    .order_by('id')
+                    .first()
+                )
+
+        # ── Step 4: Finalise – mark sorted, attach office, move to PENDING ───
+        complaint.office = office
+        complaint.sorted = True
+        complaint.status = 'PENDING'
+        complaint.save(update_fields=['office', 'sorted', 'status', 'updated_at'])
+
+        office_info = f", office '{office.name}'" if office else " (no matching office registered for this city)"
+        return {
+            'success': True,
+            'department': department,
+            'office': office,
+            'reason': (
+                f"Automatically sorted to department '{department.name}'{office_info}. "
+                "Status updated to Pending Assignment."
+            ),
+        }
 
 
 class ComplaintAssignmentSystem:
     """
-    Assignment system to assign complaints to workers based on location
+    Assignment system to assign complaints to workers based on location.
     """
-    
+
     @staticmethod
     def assign_complaint(complaint, city: str, state: str):
         """
-        Assign complaint to department based on location (city/state)
-        This marks it ready for department admin to assign to specific worker
+        Record location info and flag the complaint as ready for worker assignment.
+        Department-level routing is handled by ComplaintSortingSystem.sort_complaint;
+        this method only updates location metadata when it differs from what was
+        saved at submission time.
         """
-        # Update location info
-        complaint.city = city
-        complaint.state = state
-        complaint.assigned = True
-        complaint.status = 'PENDING'
-        complaint.save()
+        changed_fields = ['updated_at']
+
+        if complaint.city != city:
+            complaint.city = city
+            changed_fields.append('city')
+
+        if complaint.state != state:
+            complaint.state = state
+            changed_fields.append('state')
+
+        complaint.save(update_fields=changed_fields)
         return True

@@ -279,24 +279,49 @@ class ComplaintCreateView(generics.CreateAPIView):
             # ai_result == 'YES' → complaint is verified; continue pipeline
             complaint.is_genuine = True
 
-        # ── Passed both filters: sort & assign ──────────────────────────────────
-        complaint.status = 'FILTERING'
-        ComplaintSortingSystem.sort_complaint(complaint)
-        ComplaintAssignmentSystem.assign_complaint(
-            complaint,
-            complaint.city,
-            complaint.state
-        )
-        assign_office_to_complaint(complaint)
-        
-        complaint.save()
-        
-        # Log the action
+        # ── Log: both filters cleared ────────────────────────────────────────────
         ComplaintLog.objects.create(
             complaint=complaint,
             action_by=self.request.user,
-            note=f"Complaint created and passed all filters. Result: {validation_result['reason']}",
-            new_status=complaint.status
+            note=(
+                f"Complaint passed all verification filters. "
+                f"Filter A result: {validation_result['reason']}"
+                + (
+                    " | Filter B (AI): image verified as genuine."
+                    if complaint.image else " | No image submitted; Filter B skipped."
+                )
+            ),
+            old_status='SUBMITTED',
+            new_status='FILTERING',
+        )
+
+        # ── Automated Department Sorting Layer ───────────────────────────────────
+        # Reads the department recorded at submission, transitions status through
+        # SORTING → PENDING, and auto-assigns the matching city office.
+        sorting_result = ComplaintSortingSystem.sort_complaint(complaint)
+
+        # Keep city/state metadata in sync (no-op if already correct).
+        ComplaintAssignmentSystem.assign_complaint(
+            complaint,
+            complaint.city,
+            complaint.state,
+        )
+
+        # Log the sorting decision for full traceability.
+        ComplaintLog.objects.create(
+            complaint=complaint,
+            action_by=self.request.user,
+            note=(
+                f"[Automated Department Sorting Layer] {sorting_result['reason']}"
+                if sorting_result['success']
+                else (
+                    f"[Automated Department Sorting Layer] Sorting could not complete automatically. "
+                    f"Reason: {sorting_result['reason']}"
+                )
+            ),
+            old_status='SORTING',
+            new_status=complaint.status,
+            new_dept=sorting_result.get('department'),
         )
 
         # Send confirmation email to citizen
@@ -496,42 +521,66 @@ def assign_to_worker(request, pk):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def verify_complaint(request, pk):
-    """Verify a complaint as genuine"""
+    """Verify a complaint as genuine (manual admin path for PENDING_VERIFICATION complaints)"""
     try:
         complaint = get_object_or_404(Complaint, pk=pk)
-        
+
         old_status = complaint.status
-        
+
         # Mark as genuine and verified
         complaint.is_genuine = True
         complaint.filter_passed = True
         complaint.filter_checked = True
         complaint.is_spam = False
         complaint.status = 'VERIFIED'
-        
         complaint.save()
-        
-        # Log the action - use get_action_user helper
+
         action_user = get_action_user(request)
-        
+
         ComplaintLog.objects.create(
             complaint=complaint,
             action_by=action_user,
             note="Complaint verified as genuine by admin",
             old_status=old_status,
-            new_status=complaint.status
+            new_status=complaint.status,
         )
-        
+
+        # ── Automated Department Sorting Layer (manual-verify path) ─────────────
+        # A PENDING_VERIFICATION complaint has cleared Filter A; the admin has now
+        # confirmed it is genuine.  Run the sorting layer so the complaint is
+        # automatically routed to the correct department + office, identical to
+        # the automated path.
+        sorting_result = ComplaintSortingSystem.sort_complaint(complaint)
+
+        ComplaintLog.objects.create(
+            complaint=complaint,
+            action_by=action_user,
+            note=(
+                f"[Automated Department Sorting Layer] {sorting_result['reason']}"
+                if sorting_result['success']
+                else (
+                    "[Automated Department Sorting Layer] Could not auto-sort after manual verification. "
+                    f"Reason: {sorting_result['reason']}"
+                )
+            ),
+            old_status='SORTING',
+            new_status=complaint.status,
+            new_dept=sorting_result.get('department'),
+        )
+
         return Response({
-            'message': 'Complaint verified successfully',
+            'message': 'Complaint verified and automatically sorted to the correct department.',
             'status': complaint.status,
-            'is_genuine': complaint.is_genuine
+            'is_genuine': complaint.is_genuine,
+            'department': sorting_result['department'].name if sorting_result.get('department') else None,
+            'office': sorting_result['office'].name if sorting_result.get('office') else None,
+            'sorting_detail': sorting_result['reason'],
         })
     except Exception as e:
         import traceback
         traceback.print_exc()
         return Response(
-            {'error': f'Failed to verify complaint: {str(e)}'}, 
+            {'error': f'Failed to verify complaint: {str(e)}'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
