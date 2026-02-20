@@ -315,15 +315,39 @@ export default function AdminComplaints() {
   );
 }
 
+function SlaUrgencyBadge({ slaTimer }) {
+  if (!slaTimer || ['completed', 'declined'].includes(slaTimer.status)) return null;
+  const map = {
+    overdue:  { label: 'Overdue',   bg: 'rgba(239,68,68,0.15)',   color: '#ef4444',  border: 'rgba(239,68,68,0.4)'  },
+    critical: { label: 'Critical',  bg: 'rgba(239,68,68,0.1)',    color: '#f87171',  border: 'rgba(239,68,68,0.3)'  },
+    warning:  { label: 'Warning',   bg: 'rgba(245,158,11,0.12)',  color: '#f59e0b',  border: 'rgba(245,158,11,0.35)' },
+  };
+  const style = map[slaTimer.status];
+  if (!style) return null;
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: '4px',
+      padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: '700',
+      backgroundColor: style.bg, color: style.color, border: `1px solid ${style.border}`,
+      letterSpacing: '0.3px',
+    }}>
+      ⚠ SLA {style.label}
+    </span>
+  );
+}
+
 function ComplaintCard({ complaint, getStatusBadge, onClick }) {
   return (
     <div style={styles.complaintCard} onClick={onClick}>
       <div style={styles.cardHeader}>
-        <div>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <h3 style={styles.cardTitle}>{complaint.title || 'Untitled Complaint'}</h3>
           <p style={styles.cardId}>ID: {complaint.complaint_id || complaint.id}</p>
         </div>
-        {getStatusBadge(complaint.status)}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0 }}>
+          {getStatusBadge(complaint.status)}
+          <SlaUrgencyBadge slaTimer={complaint.sla_timer} />
+        </div>
       </div>
 
       <div style={styles.cardBody}>

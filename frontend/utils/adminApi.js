@@ -297,4 +297,20 @@ export const adminCityAPI = {
     })
 };
 
+// SLA Management API
+export const slaAPI = {
+  // Get all SLA configurations (per category)
+  getConfigs: () => adminApi.get('/sla/configs/'),
+
+  // Update a single SLA config
+  updateConfig: (id, data) => adminApi.patch(`/sla/configs/${id}/`, data),
+
+  // Get SLA compliance report
+  getReport: () => adminApi.get('/sla/report/'),
+
+  // Trigger auto-escalation (dry_run=true for preview)
+  triggerEscalation: (dryRun = false) =>
+    adminApi.post('/sla/trigger-escalation/', { dry_run: dryRun }),
+};
+
 export default adminApi;

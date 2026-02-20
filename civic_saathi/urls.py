@@ -57,4 +57,10 @@ urlpatterns = [
     
     # Dashboard
     path('dashboard/stats/', views_api.dashboard_stats, name='dashboard_stats'),
+
+    # SLA Management
+    path('sla/configs/', views_api.sla_configs, name='sla_configs'),
+    path('sla/configs/<int:pk>/', views_api.update_sla_config, name='update_sla_config'),
+    path('sla/report/', views_api.sla_report, name='sla_report'),
+    path('sla/trigger-escalation/', views_api.trigger_escalation, name='trigger_escalation'),
 ]

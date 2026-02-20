@@ -48,6 +48,10 @@ export default function AdminNavbar() {
           <NavLink href="/admin/attendance" active={router.pathname.startsWith('/admin/attendance')}>
             Attendance
           </NavLink>
+
+          <NavLink href="/admin/sla" active={router.pathname.startsWith('/admin/sla')}>
+            SLA
+          </NavLink>
         </div>
 
         {/* User Info and Actions */}

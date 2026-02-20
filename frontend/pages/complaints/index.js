@@ -64,8 +64,9 @@ export default function MyComplaints() {
 
   const filteredComplaints = complaints.filter(complaint => {
     if (filter === 'all') return true;
-    if (filter === 'active') return !['COMPLETED', 'RESOLVED', 'REJECTED'].includes(complaint.status);
+    if (filter === 'active') return !['COMPLETED', 'RESOLVED', 'REJECTED', 'DECLINED'].includes(complaint.status);
     if (filter === 'completed') return ['COMPLETED', 'RESOLVED'].includes(complaint.status);
+    if (filter === 'declined') return ['DECLINED', 'REJECTED'].includes(complaint.status);
     return true;
   });
 
@@ -133,6 +134,15 @@ export default function MyComplaints() {
             >
               Completed ({complaints.filter(c => ['COMPLETED', 'RESOLVED'].includes(c.status)).length})
             </button>
+            <button
+              onClick={() => setFilter('declined')}
+              style={{
+                ...styles.filterTab,
+                ...(filter === 'declined' ? styles.filterTabDeclineActive : {}),
+              }}
+            >
+              Declined ({complaints.filter(c => ['DECLINED', 'REJECTED'].includes(c.status)).length})
+            </button>
           </div>
 
           {/* Complaints List */}
@@ -157,11 +167,11 @@ export default function MyComplaints() {
           ) : (
             <div style={styles.complaintsGrid}>
               {filteredComplaints.map((complaint) => (
-                <Link key={complaint.id} href={`/complaints/${complaint.id}`}>
+                <Link key={complaint.id} href={`/complaints/${complaint.id}`} style={{ display: 'flex', textDecoration: 'none' }}>
                   <div className="card" style={styles.complaintCard}>
                     <div style={styles.cardHeader}>
                       <h3 style={styles.complaintTitle}>{complaint.title}</h3>
-                      {getStatusBadge(complaint.status)}
+                      <span style={{ flexShrink: 0 }}>{getStatusBadge(complaint.status)}</span>
                     </div>
                     
                     <p style={styles.complaintDesc}>
@@ -176,7 +186,7 @@ export default function MyComplaints() {
                           <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"></path>
                           <circle cx="12" cy="10" r="3"></circle>
                         </svg>
-                        <span>{complaint.location}</span>
+                        <span style={styles.metaText}>{complaint.location}</span>
                       </div>
                       
                       <div style={styles.metaItem}>
@@ -184,7 +194,7 @@ export default function MyComplaints() {
                           <circle cx="12" cy="12" r="10"></circle>
                           <polyline points="12 6 12 12 16 14"></polyline>
                         </svg>
-                        <span>{new Date(complaint.created_at).toLocaleDateString()}</span>
+                        <span style={styles.metaText}>{new Date(complaint.created_at).toLocaleDateString()}</span>
                       </div>
                     </div>
 
@@ -272,16 +282,19 @@ const styles = {
   },
   complaintsGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
     gap: '24px',
   },
   complaintCard: {
     cursor: 'pointer',
     transition: 'all 0.2s',
-    ':hover': {
-      transform: 'translateY(-4px)',
-      boxShadow: '0 12px 24px rgba(0,0,0,0.1)',
-    },
+    display: 'flex',
+    flexDirection: 'column',
+    width: '100%',
+    height: '100%',
+    minHeight: '240px',
+    overflow: 'hidden',
+    boxSizing: 'border-box',
   },
   cardHeader: {
     display: 'flex',
@@ -291,15 +304,26 @@ const styles = {
     marginBottom: '12px',
   },
   complaintTitle: {
-    fontSize: '1.125rem',
+    fontSize: '1.0625rem',
     fontWeight: '600',
     flex: 1,
+    minWidth: 0,
+    overflow: 'hidden',
+    display: '-webkit-box',
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: 'vertical',
+    wordBreak: 'break-word',
   },
   complaintDesc: {
     fontSize: '0.875rem',
     color: 'var(--text-secondary)',
     lineHeight: '1.6',
     marginBottom: '1rem',
+    overflow: 'hidden',
+    display: '-webkit-box',
+    WebkitLineClamp: 3,
+    WebkitBoxOrient: 'vertical',
+    flex: 1,
   },
   complaintMeta: {
     display: 'flex',
@@ -307,6 +331,7 @@ const styles = {
     gap: '0.5rem',
     paddingTop: '1rem',
     borderTop: '1px solid var(--border-color)',
+    marginTop: 'auto',
   },
   metaItem: {
     display: 'flex',
@@ -314,6 +339,17 @@ const styles = {
     gap: '0.5rem',
     fontSize: '0.8125rem',
     color: 'var(--text-secondary)',
+    minWidth: 0,
+  },
+  metaText: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    minWidth: 0,
+  },
+  filterTabDeclineActive: {
+    color: '#ef4444',
+    borderBottomColor: '#ef4444',
   },
   upvotes: {
     display: 'flex',

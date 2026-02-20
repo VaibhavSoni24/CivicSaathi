@@ -11,7 +11,7 @@ from datetime import datetime
 
 from .models import (
     CustomUser, Complaint, ComplaintLog, ComplaintVote, ComplaintCategory,
-    Department, SubAdminCategory, Worker, WorkerAttendance, DepartmentAttendance, Office
+    Department, SubAdminCategory, Worker, WorkerAttendance, DepartmentAttendance, Office, SLAConfig
 )
 from .serializers import (
     UserSerializer, UserRegistrationSerializer, LoginSerializer,
@@ -1350,3 +1350,168 @@ def complaint_logs(request, pk):
     logs = ComplaintLog.objects.filter(complaint=complaint).order_by('-timestamp')
     serializer = ComplaintLogSerializer(logs, many=True)
     return Response(serializer.data)
+
+
+# -------------------------
+# SLA Management Views
+# -------------------------
+
+@api_view(['GET'])
+@authentication_classes([AdminTokenAuthentication])
+@permission_classes([IsAdmin])
+def sla_configs(request):
+    """List all SLA configurations per category"""
+    configs = SLAConfig.objects.select_related(
+        'category', 'category__department'
+    ).all().order_by('category__department__name', 'category__name')
+    data = [
+        {
+            'id': cfg.id,
+            'category_id': cfg.category.id,
+            'category_name': cfg.category.name,
+            'department_name': cfg.category.department.name,
+            'escalation_hours': cfg.escalation_hours,
+            'resolution_hours': cfg.resolution_hours,
+        }
+        for cfg in configs
+    ]
+    return Response(data)
+
+
+@api_view(['PUT', 'PATCH'])
+@authentication_classes([AdminTokenAuthentication])
+@permission_classes([IsAdmin])
+def update_sla_config(request, pk):
+    """Update a single SLA configuration"""
+    try:
+        cfg = SLAConfig.objects.select_related('category', 'category__department').get(pk=pk)
+    except SLAConfig.DoesNotExist:
+        return Response({'error': 'SLA config not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if 'escalation_hours' in request.data:
+        val = int(request.data['escalation_hours'])
+        if val < 1:
+            return Response({'error': 'escalation_hours must be >= 1'}, status=400)
+        cfg.escalation_hours = val
+    if 'resolution_hours' in request.data:
+        val = int(request.data['resolution_hours'])
+        if val < 1:
+            return Response({'error': 'resolution_hours must be >= 1'}, status=400)
+        cfg.resolution_hours = val
+    cfg.save()
+    return Response({
+        'id': cfg.id,
+        'category_id': cfg.category.id,
+        'category_name': cfg.category.name,
+        'department_name': cfg.category.department.name,
+        'escalation_hours': cfg.escalation_hours,
+        'resolution_hours': cfg.resolution_hours,
+    })
+
+
+@api_view(['GET'])
+@authentication_classes([AdminTokenAuthentication])
+@permission_classes([IsAdmin])
+def sla_report(request):
+    """SLA compliance report with summary stats and per-department breakdown"""
+    now = timezone.now()
+
+    active_complaints = Complaint.objects.filter(
+        status__in=['SUBMITTED', 'PENDING', 'FILTERING', 'SORTING', 'ASSIGNED', 'IN_PROGRESS'],
+        is_deleted=False
+    ).select_related('category__sla_config', 'department')
+
+    overdue_count = 0
+    warning_count = 0
+    on_time_count = 0
+    dept_stats = {}
+
+    for c in active_complaints:
+        if not c.category or not hasattr(c.category, 'sla_config'):
+            continue
+        sla = c.category.sla_config
+        hours_elapsed = (now - c.created_at).total_seconds() / 3600
+        hours_until = sla.escalation_hours - hours_elapsed
+        dept_name = c.department.name if c.department else 'Unknown'
+
+        if dept_name not in dept_stats:
+            dept_stats[dept_name] = {'overdue': 0, 'warning': 0, 'on_time': 0, 'total': 0}
+        dept_stats[dept_name]['total'] += 1
+
+        if hours_until <= 0:
+            overdue_count += 1
+            dept_stats[dept_name]['overdue'] += 1
+        elif hours_until <= 6:
+            warning_count += 1
+            dept_stats[dept_name]['warning'] += 1
+        else:
+            on_time_count += 1
+            dept_stats[dept_name]['on_time'] += 1
+
+    # Resolved complaints — check resolution compliance
+    completed = Complaint.objects.filter(
+        status__in=['COMPLETED', 'RESOLVED'],
+        is_deleted=False
+    ).select_related('category__sla_config')
+
+    resolved_on_time = 0
+    resolved_overdue = 0
+    for c in completed:
+        if not c.category or not hasattr(c.category, 'sla_config'):
+            continue
+        sla = c.category.sla_config
+        hours_to_resolve = (c.updated_at - c.created_at).total_seconds() / 3600
+        if hours_to_resolve <= sla.resolution_hours:
+            resolved_on_time += 1
+        else:
+            resolved_overdue += 1
+
+    total_active = overdue_count + warning_count + on_time_count
+    compliance_rate = round(
+        ((on_time_count + warning_count) / total_active * 100) if total_active > 0 else 100.0, 1
+    )
+    total_resolved = resolved_on_time + resolved_overdue
+    resolution_compliance = round(
+        (resolved_on_time / total_resolved * 100) if total_resolved > 0 else 100.0, 1
+    )
+
+    dept_breakdown = sorted(
+        [{'department': name, **stats} for name, stats in dept_stats.items()],
+        key=lambda x: x['overdue'],
+        reverse=True
+    )
+
+    return Response({
+        'summary': {
+            'total_active': total_active,
+            'overdue': overdue_count,
+            'warning': warning_count,
+            'on_time': on_time_count,
+            'compliance_rate': compliance_rate,
+            'resolved_on_time': resolved_on_time,
+            'resolved_overdue': resolved_overdue,
+            'resolution_compliance': resolution_compliance,
+        },
+        'department_breakdown': dept_breakdown,
+    })
+
+
+@api_view(['POST'])
+@authentication_classes([AdminTokenAuthentication])
+@permission_classes([IsAdmin])
+def trigger_escalation(request):
+    """Manually trigger SLA auto-escalation check"""
+    from django.core.management import call_command
+    from io import StringIO
+
+    dry_run = request.data.get('dry_run', False)
+    out = StringIO()
+    try:
+        if dry_run:
+            call_command('auto_escalate', '--dry-run', stdout=out)
+        else:
+            call_command('auto_escalate', stdout=out)
+        return Response({'success': True, 'output': out.getvalue()})
+    except Exception as e:
+        return Response({'success': False, 'error': str(e)}, status=500)
+
