@@ -13,6 +13,7 @@ urlpatterns = [
     path('worker/me/', views_api.worker_current_user, name='worker_current_user'),
     
     # Complaints - Citizen
+    path('complaints/analyze-image/', views_api.analyze_complaint_image, name='analyze_complaint_image'),
     path('complaints/create/', views_api.ComplaintCreateView.as_view(), name='complaint_create'),
     path('complaints/all/', views_api.AllComplaintsView.as_view(), name='all_complaints'),
     path('complaints/my/', views_api.MyComplaintsView.as_view(), name='my_complaints'),

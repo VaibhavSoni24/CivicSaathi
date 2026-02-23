@@ -7,7 +7,11 @@ from django.contrib.auth import authenticate
 from django.shortcuts import get_object_or_404
 from django.db.models import Q, Count
 from django.utils import timezone
+from django.conf import settings
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 from .models import (
     CustomUser, Complaint, ComplaintLog, ComplaintVote, ComplaintCategory,
@@ -1766,4 +1770,103 @@ def trigger_escalation(request):
         return Response({'success': True, 'output': out.getvalue()})
     except Exception as e:
         return Response({'success': False, 'error': str(e)}, status=500)
+
+
+# -------------------------
+# AI Image Analysis View
+# -------------------------
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def analyze_complaint_image(request):
+    """
+    Accepts an image upload and uses Gemini Vision to auto-generate
+    complaint fields: title, department, description, and location.
+    """
+    import json
+    import io
+    from google import genai
+    from PIL import Image as PIL_Image
+
+    image_file = request.FILES.get('image')
+    if not image_file:
+        return Response({'error': 'Image is required'}, status=400)
+
+    try:
+        # Build department list to pass to Gemini
+        departments = Department.objects.all()
+        dept_list_str = '\n'.join(f'- {d.name}' for d in departments)
+
+        # Load image bytes into PIL
+        image_bytes = image_file.read()
+        pil_image = PIL_Image.open(io.BytesIO(image_bytes))
+
+        client = genai.Client(api_key=settings.GEMINI_API_KEY)
+
+        prompt = f"""You are an AI assistant for a Smart City civic complaint platform called CivicSaathi.
+Analyze the provided image and generate a structured civic complaint based solely on what you can see.
+
+Available municipal departments (choose EXACTLY one):
+{dept_list_str}
+
+Instructions:
+1. Identify the civic issue visible in the image.
+2. Generate a SHORT, clear complaint title (max 10 words).
+3. Select the MOST APPROPRIATE department from the list above using the EXACT name provided.
+4. Write a DETAILED, factual description of the issue (minimum 30 words) based on what is visible.
+5. Describe the TYPE OF PLACE or scene visible in the image as a short location phrase.
+   Focus on what kind of PUBLIC PLACE or area it is — NOT a street address.
+   Examples: "Public dustbin near a residential building entrance", "Roadside pothole on a busy street",
+   "Public washroom in a park", "Overflowing drain near a market area", "Broken streetlight on a main road".
+   Be concise (max 10 words). Always provide a meaningful scene-based description — never say it is unknown.
+
+Respond ONLY with the following JSON and no other text:
+{{
+  "title": "<short complaint title>",
+  "department": "<exact department name from list>",
+  "description": "<detailed description>",
+  "location": "<landmark-style location description>"
+}}"""
+
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=[pil_image, prompt],
+        )
+
+        raw = response.text.strip()
+        # Strip possible markdown code fences
+        if raw.startswith('```'):
+            parts = raw.split('```')
+            raw = parts[1] if len(parts) > 1 else raw
+            if raw.startswith('json'):
+                raw = raw[4:]
+        raw = raw.strip()
+
+        data = json.loads(raw)
+
+        # Match department by exact name, then partial
+        matched_dept = None
+        ai_dept_name = data.get('department', '').strip()
+        for dept in departments:
+            if dept.name.lower() == ai_dept_name.lower():
+                matched_dept = dept
+                break
+        if not matched_dept:
+            for dept in departments:
+                if dept.name.lower() in ai_dept_name.lower() or ai_dept_name.lower() in dept.name.lower():
+                    matched_dept = dept
+                    break
+
+        return Response({
+            'title': data.get('title', '').strip(),
+            'department_name': matched_dept.name if matched_dept else ai_dept_name,
+            'department_id': matched_dept.id if matched_dept else None,
+            'description': data.get('description', '').strip(),
+            'location': data.get('location', '').strip(),
+        })
+
+    except json.JSONDecodeError:
+        return Response({'error': 'AI returned an unexpected response. Please try again.'}, status=500)
+    except Exception as e:
+        logger.error(f"analyze_complaint_image error: {e}")
+        return Response({'error': f'Image analysis failed: {str(e)}'}, status=500)
 
