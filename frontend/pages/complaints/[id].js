@@ -146,37 +146,17 @@ export default function ComplaintDetail() {
               </div>
             </div>
 
-            {/* Upvote Button */}
-            {user && complaint.user_username === user.username ? (
-              <div title="You cannot upvote your own complaint" style={{ display: 'inline-flex' }}>
-                <button
-                  disabled
-                  style={{
-                    ...styles.upvoteBtn,
-                    ...styles.upvoteBtnDisabled,
-                  }}
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M12 19V6M5 12l7-7 7 7"/>
-                  </svg>
-                  <span>{complaint.upvote_count} {complaint.upvote_count === 1 ? 'Upvote' : 'Upvotes'}</span>
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={handleUpvote}
-                disabled={upvoting || complaint.user_has_voted}
-                style={{
-                  ...styles.upvoteBtn,
-                  ...(complaint.user_has_voted ? styles.upvoteBtnActive : {}),
-                }}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill={complaint.user_has_voted ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
-                  <path d="M12 19V6M5 12l7-7 7 7"/>
-                </svg>
-                <span>{complaint.upvote_count} {complaint.upvote_count === 1 ? 'Upvote' : 'Upvotes'}</span>
-              </button>
-            )}
+            {/* Upvote Label (manual upvoting disabled — auto-upvote via duplicate detection) */}
+            <div style={{
+              ...styles.upvoteBtn,
+              ...styles.upvoteBtnDisabled,
+              cursor: 'default',
+            }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 19V6M5 12l7-7 7 7"/>
+              </svg>
+              <span>{complaint.upvote_count} {complaint.upvote_count === 1 ? 'Upvote' : 'Upvotes'}</span>
+            </div>
           </div>
 
           {/* SLA Timer */}

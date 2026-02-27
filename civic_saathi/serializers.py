@@ -147,7 +147,8 @@ class ComplaintSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ('user', 'status', 'current_worker', 'current_officer', 
                             'priority', 'upvote_count', 'filter_checked', 'filter_passed',
-                            'sorted', 'assigned', 'is_deleted', 'is_spam', 'is_genuine', 'office')
+                            'sorted', 'assigned', 'is_deleted', 'is_spam', 'is_genuine', 'office',
+                            'smart_hash')
     
     def get_user_has_voted(self, obj):
         request = self.context.get('request')

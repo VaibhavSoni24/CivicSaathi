@@ -282,6 +282,14 @@ class Complaint(models.Model):
     is_spam = models.BooleanField(default=False)
     is_genuine = models.BooleanField(default=False)
 
+    # Smart Geo-Hash for Duplicate Detection  (10-char: TITLE3 + LAT2 + LON2 + DEPT3)
+    smart_hash = models.CharField(
+        max_length=10,
+        blank=True,
+        db_index=True,
+        help_text="10-char smart hash [TITLE3][LAT2][LON2][DEPT3] for duplicate detection"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     completed_at = models.DateTimeField(null=True, blank=True)
@@ -292,6 +300,13 @@ class Complaint(models.Model):
             self.department = self.category.department
         # Update priority based on votes
         self.priority = 1 + (self.upvote_count // 10)  # Every 10 votes increases priority
+        # Auto-generate smart hash for duplicate detection if not already set
+        if not self.smart_hash and self.title:
+            from .duplicate_detection import generate_smart_hash
+            dept_name = self.department.name if self.department else None
+            self.smart_hash = generate_smart_hash(
+                self.title, self.latitude, self.longitude, dept_name
+            )
         super().save(*args, **kwargs)
 
     def __str__(self):

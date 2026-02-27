@@ -19,7 +19,7 @@ async function reverseGeocode(lat, lng) {
   return { location, city, state };
 }
 
-// Steps: 'upload' → 'analyzing' → 'review' → 'success'
+// Steps: 'upload' → 'analyzing' → 'review' → 'success' | 'duplicate'
 export default function NewComplaint() {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -32,6 +32,9 @@ export default function NewComplaint() {
   const [coords, setCoords] = useState({ lat: '', lng: '' });
   const [geoData, setGeoData] = useState({ location: '', city: '', state: '' });
   const [geoLoading, setGeoLoading] = useState(false);
+
+  // Duplicate detection state
+  const [duplicateInfo, setDuplicateInfo] = useState(null);
 
   const [complaint, setComplaint] = useState({
     title: '',
@@ -134,7 +137,7 @@ export default function NewComplaint() {
     setError('');
     setSubmitting(true);
     try {
-      await complaintAPI.create({
+      const response = await complaintAPI.create({
         title: complaint.title,
         description: complaint.description,
         department: complaint.department_id,
@@ -145,9 +148,25 @@ export default function NewComplaint() {
         longitude: complaint.longitude,
         image: imageFile,
       });
+
+      const data = response.data;
+
+      // Handle duplicate detection responses (HTTP 200 with auto-upvote)
+      if (data.duplicate) {
+        setDuplicateInfo(data);
+        setStep('duplicate');
+        return;
+      }
+
       setStep('success');
       setTimeout(() => router.push('/dashboard'), 2500);
     } catch (err) {
+      // HTTP 409 = same user already reported this exact issue
+      if (err.response?.status === 409 && err.response?.data?.duplicate) {
+        setDuplicateInfo(err.response.data);
+        setStep('duplicate');
+        return;
+      }
       setError(err.response?.data?.error || 'Failed to submit complaint. Please try again.');
     } finally {
       setSubmitting(false);
@@ -182,7 +201,7 @@ export default function NewComplaint() {
           </div>
 
           {/* Step indicator */}
-          {step !== 'success' && (
+          {step !== 'success' && step !== 'duplicate' && (
             <div style={styles.stepIndicator}>
               {[
                 { key: 'upload', label: 'Upload' },
@@ -413,6 +432,79 @@ export default function NewComplaint() {
                 <h2>Complaint Submitted Successfully!</h2>
                 <p>Your complaint is being processed through our validation system.</p>
                 <p>Redirecting to dashboard…</p>
+              </div>
+            )}
+
+            {/* ── STEP: DUPLICATE DETECTED ── */}
+            {step === 'duplicate' && duplicateInfo && (
+              <div style={styles.duplicateContainer}>
+                {duplicateInfo.auto_upvoted ? (
+                  <>
+                    <div style={styles.duplicateIconUpvote}>▲</div>
+                    <h2 style={styles.duplicateTitle}>Duplicate Issue Detected</h2>
+                    <p style={styles.duplicateMessage}>
+                      This issue already exists in our system. Your support has been
+                      automatically added as an upvote!
+                    </p>
+                    <div style={styles.duplicateCard}>
+                      <div style={styles.duplicateCardRow}>
+                        <span style={styles.duplicateLabel}>Existing Complaint</span>
+                        <span style={styles.duplicateValue}>#{duplicateInfo.existing_complaint_id}</span>
+                      </div>
+                      <div style={styles.duplicateCardRow}>
+                        <span style={styles.duplicateLabel}>Total Upvotes</span>
+                        <span style={{...styles.duplicateValue, color: 'var(--accent-primary)', fontWeight: '700'}}>
+                          {duplicateInfo.upvote_count}
+                        </span>
+                      </div>
+                    </div>
+                    <p style={styles.duplicateHint}>
+                      Higher upvote counts increase complaint priority and speed up resolution.
+                    </p>
+                    <div style={styles.duplicateActions}>
+                      <button
+                        className="btn btn-secondary"
+                        onClick={() => router.push(`/complaints/${duplicateInfo.existing_complaint_id}`)}
+                      >
+                        View Existing Complaint
+                      </button>
+                      <button
+                        className="btn btn-primary"
+                        onClick={() => router.push('/dashboard')}
+                      >
+                        Go to Dashboard
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={styles.duplicateIconSelf}>!</div>
+                    <h2 style={styles.duplicateTitle}>Already Reported</h2>
+                    <p style={styles.duplicateMessage}>
+                      You have already reported this exact issue. There is no need to submit it again.
+                    </p>
+                    <div style={styles.duplicateCard}>
+                      <div style={styles.duplicateCardRow}>
+                        <span style={styles.duplicateLabel}>Your Complaint</span>
+                        <span style={styles.duplicateValue}>#{duplicateInfo.existing_complaint_id}</span>
+                      </div>
+                    </div>
+                    <div style={styles.duplicateActions}>
+                      <button
+                        className="btn btn-secondary"
+                        onClick={() => router.push(`/complaints/${duplicateInfo.existing_complaint_id}`)}
+                      >
+                        View Your Complaint
+                      </button>
+                      <button
+                        className="btn btn-primary"
+                        onClick={() => router.push('/dashboard')}
+                      >
+                        Go to Dashboard
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
@@ -687,5 +779,89 @@ const styles = {
     justifyContent: 'center',
     fontSize: '3rem',
     fontWeight: '700',
+  },
+  /* ── Duplicate detection step ── */
+  duplicateContainer: {
+    textAlign: 'center',
+    padding: '2.5rem 1.5rem',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '1rem',
+  },
+  duplicateIconUpvote: {
+    width: '80px',
+    height: '80px',
+    margin: '0 auto 0.5rem',
+    backgroundColor: 'rgba(99, 102, 241, 0.15)',
+    color: 'var(--accent-primary)',
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '2.5rem',
+    fontWeight: '700',
+  },
+  duplicateIconSelf: {
+    width: '80px',
+    height: '80px',
+    margin: '0 auto 0.5rem',
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    color: '#f59e0b',
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '2.5rem',
+    fontWeight: '700',
+  },
+  duplicateTitle: {
+    fontSize: '1.5rem',
+    fontWeight: '700',
+    margin: 0,
+  },
+  duplicateMessage: {
+    color: 'var(--text-secondary)',
+    fontSize: '0.95rem',
+    margin: 0,
+    lineHeight: '1.6',
+    maxWidth: '480px',
+  },
+  duplicateCard: {
+    width: '100%',
+    maxWidth: '360px',
+    borderRadius: 'var(--radius-lg)',
+    border: '1px solid var(--border-primary)',
+    backgroundColor: 'var(--bg-tertiary)',
+    padding: '1rem 1.25rem',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.75rem',
+  },
+  duplicateCardRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  duplicateLabel: {
+    fontSize: '0.82rem',
+    color: 'var(--text-muted)',
+    fontWeight: '500',
+  },
+  duplicateValue: {
+    fontSize: '0.95rem',
+    fontWeight: '600',
+    color: 'var(--text-primary)',
+  },
+  duplicateHint: {
+    fontSize: '0.8rem',
+    color: 'var(--text-muted)',
+    margin: 0,
+    maxWidth: '420px',
+  },
+  duplicateActions: {
+    display: 'flex',
+    gap: '1rem',
+    marginTop: '0.5rem',
   },
 };

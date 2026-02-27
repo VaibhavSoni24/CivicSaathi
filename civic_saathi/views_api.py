@@ -27,6 +27,7 @@ from .serializers import (
 )
 from .filter_system import ComplaintFilterSystem, ComplaintSortingSystem, ComplaintAssignmentSystem
 from .ai_filter import is_complaint_genuine  # Filter B: AI-assisted visual verification
+from .duplicate_detection import generate_smart_hash, generate_candidate_hashes, find_duplicate
 from .permissions import IsAdmin, IsSubAdmin, IsDepartmentAdmin, IsCitizen
 from .admin_auth import AdminTokenAuthentication
 from .email_service import (
@@ -163,9 +164,96 @@ def current_user(request):
 # Complaint Views for Citizens
 # -------------------------
 class ComplaintCreateView(generics.CreateAPIView):
-    """Create new complaint"""
+    """Create new complaint with Smart Geo-Hash Duplicate Detection"""
     serializer_class = ComplaintCreateSerializer
     permission_classes = [IsAuthenticated]
+
+    def create(self, request, *args, **kwargs):
+        """
+        Override create() to run duplicate detection BEFORE saving.
+
+        Flow:
+          1. Validate incoming data.
+          2. Generate the 10-char smart hash [TITLE3][LAT2][LON2][DEPT3].
+          3. Search for existing active complaint with that hash.
+             • Match + same user   → HTTP 409 ("You have already reported this issue.")
+             • Match + diff user   → HTTP 200 with auto-upvote.
+             • No match            → proceed with normal creation pipeline.
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        vd = serializer.validated_data
+        title = vd.get('title', '')
+        latitude = vd.get('latitude')
+        longitude = vd.get('longitude')
+        department = vd.get('department')
+        dept_name = department.name if department else None
+
+        # ── Generate 10-char Smart Hash ─────────────────────────────────────
+        smart_hash = generate_smart_hash(title, latitude, longitude, dept_name)
+
+        # ── Generate all 9 candidate hashes (primary + 8 neighbors) ────────
+        lat_f = float(latitude) if latitude is not None else None
+        lng_f = float(longitude) if longitude is not None else None
+        candidate_hashes = generate_candidate_hashes(
+            title, latitude, longitude, dept_name
+        )
+
+        # ── Duplicate lookup with neighbor search + Haversine ──────────────
+        existing = find_duplicate(
+            smart_hash,
+            candidate_hashes=candidate_hashes,
+            new_lat=lat_f,
+            new_lng=lng_f,
+        )
+
+        if existing is not None:
+            # Same user already reported this issue
+            if existing.user_id == request.user.id:
+                return Response(
+                    {
+                        'duplicate': True,
+                        'auto_upvoted': False,
+                        'smart_hash': smart_hash,
+                        'message': 'You have already reported this issue.',
+                        'existing_complaint_id': existing.id,
+                    },
+                    status=status.HTTP_409_CONFLICT,
+                )
+
+            # Different user → auto-upvote
+            vote, vote_created = ComplaintVote.objects.get_or_create(
+                complaint=existing,
+                user=request.user,
+            )
+            if vote_created:
+                existing.upvote_count += 1
+                existing.save()
+                send_complaint_upvoted_email(existing)
+
+            complaint_data = ComplaintSerializer(
+                existing, context={'request': request}
+            ).data
+            return Response(
+                {
+                    'duplicate': True,
+                    'auto_upvoted': True,
+                    'smart_hash': smart_hash,
+                    'message': 'This issue already exists. Your support has been added.',
+                    'existing_complaint_id': existing.id,
+                    'upvote_count': existing.upvote_count,
+                    'complaint': complaint_data,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        # ── No duplicate → normal creation ──────────────────────────────────
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(
+            serializer.data, status=status.HTTP_201_CREATED, headers=headers
+        )
 
     def perform_create(self, serializer):
         complaint = serializer.save(user=self.request.user)
