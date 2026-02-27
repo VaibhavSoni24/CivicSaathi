@@ -60,6 +60,7 @@ export const complaintAPI = {
     });
   },
   getMyComplaints: () => api.get('/complaints/my/'),
+  getUpvotedComplaints: () => api.get('/complaints/upvoted/'),
   getAllComplaints: (params) => api.get('/complaints/all/', { params }),
   getComplaint: (id) => api.get(`/complaints/${id}/`),
   upvote: (id) => api.post(`/complaints/${id}/upvote/`),

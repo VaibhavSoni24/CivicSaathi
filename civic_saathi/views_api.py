@@ -321,6 +321,21 @@ class MyComplaintsView(generics.ListAPIView):
         ).order_by('-created_at')
 
 
+class MyUpvotedComplaintsView(generics.ListAPIView):
+    """Get all complaints upvoted by the current user"""
+    serializer_class = ComplaintSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        upvoted_ids = ComplaintVote.objects.filter(
+            user=self.request.user
+        ).values_list('complaint_id', flat=True)
+        return Complaint.objects.filter(
+            id__in=upvoted_ids,
+            is_deleted=False
+        ).order_by('-created_at')
+
+
 class AllComplaintsView(generics.ListAPIView):
     """Get all complaints in user's area (city/state) or all for admins"""
     serializer_class = ComplaintSerializer
@@ -382,7 +397,14 @@ class ComplaintDetailView(generics.RetrieveAPIView):
 def upvote_complaint(request, pk):
     """Upvote a complaint"""
     complaint = get_object_or_404(Complaint, pk=pk)
-    
+
+    # Prevent users from upvoting their own complaints
+    if complaint.user == request.user:
+        return Response(
+            {'error': 'You cannot upvote your own complaint.'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
     # Check if user already voted
     vote, created = ComplaintVote.objects.get_or_create(
         complaint=complaint,

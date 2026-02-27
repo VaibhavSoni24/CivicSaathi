@@ -56,6 +56,9 @@ export default function Navbar() {
                   <Link href="/complaints" style={styles.link}>
                     My Complaints
                   </Link>
+                  <Link href="/complaints/upvoted" style={styles.link}>
+                    Upvoted
+                  </Link>
                 </>
               )}
               <div style={styles.userMenu}>
