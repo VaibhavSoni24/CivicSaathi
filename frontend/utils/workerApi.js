@@ -70,4 +70,12 @@ export const workerDashboardAPI = {
   getStats: () => workerApi.get('/worker/dashboard/stats/'),
 };
 
+// Worker Notifications API (Multi-Channel Alert System)
+export const workerNotificationsAPI = {
+  getNotifications: (unreadOnly = false) =>
+    workerApi.get('/worker/notifications/', { params: unreadOnly ? { unread_only: 'true' } : {} }),
+  markRead: (id) => workerApi.post(`/worker/notifications/${id}/read/`),
+  markAllRead: () => workerApi.post('/worker/notifications/mark-all-read/'),
+};
+
 export default workerApi;

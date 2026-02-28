@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useWorkerAuth } from '../context/WorkerAuthContext';
 import { useState } from 'react';
+import WorkerNotificationBell from './WorkerNotificationBell';
 
 export default function WorkerNavbar() {
   const { worker, logout } = useWorkerAuth();
@@ -57,6 +58,7 @@ export default function WorkerNavbar() {
 
         {worker && (
           <div style={styles.userSection}>
+            <WorkerNotificationBell />
             <div
               style={styles.userButton}
               onClick={() => setShowDropdown(!showDropdown)}
@@ -165,6 +167,9 @@ const styles = {
   },
   userSection: {
     position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
   },
   userButton: {
     display: 'flex',
