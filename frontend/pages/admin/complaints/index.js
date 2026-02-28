@@ -298,7 +298,14 @@ export default function AdminComplaints() {
               </div>
             ) : (
               <div style={styles.complaintsGrid}>
-                {filteredComplaints.map(complaint => (
+                {[...filteredComplaints].sort((a, b) => {
+                  // Emergencies first, then by priority descending, then by date
+                  if (a.is_emergency && !b.is_emergency) return -1;
+                  if (!a.is_emergency && b.is_emergency) return 1;
+                  if ((b.priority_level || 1) !== (a.priority_level || 1))
+                    return (b.priority_level || 1) - (a.priority_level || 1);
+                  return new Date(b.created_at) - new Date(a.created_at);
+                }).map(complaint => (
                   <ComplaintCard 
                     key={complaint.id} 
                     complaint={complaint}
@@ -336,9 +343,48 @@ function SlaUrgencyBadge({ slaTimer }) {
   );
 }
 
+function PriorityBadge({ level }) {
+  const config = {
+    5: { label: 'P5 Emergency', bg: 'rgba(220,38,38,0.15)', color: '#dc2626', border: 'rgba(220,38,38,0.4)' },
+    4: { label: 'P4 High',      bg: 'rgba(234,88,12,0.12)',  color: '#ea580c', border: 'rgba(234,88,12,0.35)' },
+    3: { label: 'P3 Medium',    bg: 'rgba(202,138,4,0.12)',  color: '#ca8a04', border: 'rgba(202,138,4,0.35)' },
+    2: { label: 'P2 Low',       bg: 'rgba(22,163,74,0.1)',   color: '#16a34a', border: 'rgba(22,163,74,0.3)' },
+    1: { label: 'P1 Minimal',   bg: 'rgba(107,114,128,0.1)', color: '#6b7280', border: 'rgba(107,114,128,0.3)' },
+  };
+  const c = config[level] || config[1];
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: '3px',
+      padding: '2px 7px', borderRadius: '10px', fontSize: '10px', fontWeight: '700',
+      backgroundColor: c.bg, color: c.color, border: `1px solid ${c.border}`,
+      letterSpacing: '0.3px', textTransform: 'uppercase',
+    }}>
+      {c.label}
+    </span>
+  );
+}
+
+function EmergencyBanner({ isEmergency }) {
+  if (!isEmergency) return null;
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: '6px',
+      padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '800',
+      background: 'linear-gradient(90deg, rgba(220,38,38,0.18) 0%, rgba(220,38,38,0.06) 100%)',
+      color: '#dc2626', border: '1px solid rgba(220,38,38,0.35)',
+      letterSpacing: '0.5px', animation: 'pulse 2s infinite',
+    }}>
+      \uD83D\uDEA8 EMERGENCY
+    </div>
+  );
+}
+
 function ComplaintCard({ complaint, getStatusBadge, onClick }) {
   return (
-    <div style={styles.complaintCard} onClick={onClick}>
+    <div style={{
+      ...styles.complaintCard,
+      ...(complaint.is_emergency ? { borderLeft: '4px solid #dc2626', boxShadow: '0 0 12px rgba(220,38,38,0.15)' } : {}),
+    }} onClick={onClick}>
       <div style={styles.cardHeader}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <h3 style={styles.cardTitle}>{complaint.title || 'Untitled Complaint'}</h3>
@@ -346,7 +392,9 @@ function ComplaintCard({ complaint, getStatusBadge, onClick }) {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0 }}>
           {getStatusBadge(complaint.status)}
+          <PriorityBadge level={complaint.priority_level || 1} />
           <SlaUrgencyBadge slaTimer={complaint.sla_timer} />
+          <EmergencyBanner isEmergency={complaint.is_emergency} />
         </div>
       </div>
 
@@ -383,6 +431,11 @@ function ComplaintCard({ complaint, getStatusBadge, onClick }) {
             </svg>
             {complaint.department_name || complaint.department || 'No Department'}
           </span>
+          {complaint.sla_hours && complaint.sla_hours !== 48 && (
+            <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+              SLA: {complaint.sla_hours}h
+            </span>
+          )}
           {complaint.category_name && (
             <span style={styles.category}>{complaint.category_name}</span>
           )}

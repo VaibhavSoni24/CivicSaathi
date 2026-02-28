@@ -132,18 +132,18 @@ class WorkerAdmin(admin.ModelAdmin):
 class ComplaintAdmin(admin.ModelAdmin):
     list_display = (
         "id", "title", "department",
-        "priority_badge", "status_badge",
+        "priority_badge", "emergency_flag", "status_badge",
         "current_worker", "sla_indicator", "created_at"
     )
 
     list_filter = (
         "department", "status",
-        "priority", "is_deleted", "is_spam"
+        "priority", "priority_level", "is_emergency", "is_deleted", "is_spam"
     )
 
     search_fields = ("title", "description", "user__username")
 
-    ordering = ("-priority", "-created_at")
+    ordering = ("-is_emergency", "-priority", "-created_at")
 
     inlines = [AssignmentInline, ComplaintEscalationInline, ComplaintLogInline]
 
@@ -154,7 +154,7 @@ class ComplaintAdmin(admin.ModelAdmin):
             "fields": ("user", "title", "description", "location", "city", "state", "image")
         }),
         ("Routing & Priority", {
-            "fields": ("category", "department", "office", "priority", "status")
+            "fields": ("category", "department", "office", "priority", "priority_level", "sla_hours", "is_emergency", "status")
         }),
         ("Assignment", {
             "fields": ("current_officer", "current_worker")
@@ -169,14 +169,25 @@ class ComplaintAdmin(admin.ModelAdmin):
     
     readonly_fields = ('completed_at',)
     
+    def emergency_flag(self, obj):
+        if obj.is_emergency:
+            return format_html(
+                '<span style="background-color: #dc2626; color: white; padding: 3px 8px; '
+                'border-radius: 3px; font-weight: bold; font-size: 11px;">🚨 EMERGENCY</span>'
+            )
+        return ''
+    emergency_flag.short_description = 'Emergency'
+
     def priority_badge(self, obj):
-        colors = {1: 'green', 2: 'orange', 3: 'red'}
-        labels = {1: 'Normal', 2: 'High', 3: 'Critical'}
-        color = colors.get(obj.priority, 'gray')
-        label = labels.get(obj.priority, f'P{obj.priority}')
+        colors = {1: '#6b7280', 2: '#16a34a', 3: '#ca8a04', 4: '#ea580c', 5: '#dc2626'}
+        labels = {1: 'P1 Minimal', 2: 'P2 Low', 3: 'P3 Medium', 4: 'P4 High', 5: 'P5 Emergency'}
+        level = obj.priority_level or 1
+        color = colors.get(level, 'gray')
+        label = labels.get(level, f'P{level}')
         return format_html(
-            '<span style="background-color: {}; color: white; padding: 3px 8px; border-radius: 3px; font-weight: bold;">{}</span>',
-            color, label
+            '<span style="background-color: {}; color: white; padding: 3px 8px; border-radius: 3px; font-weight: bold; font-size: 11px;">{}</span>'
+            ' <small style="color: #888;">SLA:{}h</small>',
+            color, label, obj.sla_hours or 48
         )
     priority_badge.short_description = 'Priority'
     
@@ -201,13 +212,16 @@ class ComplaintAdmin(admin.ModelAdmin):
     status_badge.short_description = 'Status'
     
     def sla_indicator(self, obj):
-        """Show SLA status with color indicator"""
-        if not obj.category or not hasattr(obj.category, 'sla_config'):
-            return format_html('<span style="color: gray;">No SLA</span>')
-        
-        sla = obj.category.sla_config
+        """Show SLA status with color indicator — uses AI SLA when available"""
+        # Use AI-determined SLA hours if available
+        effective_hours = obj.sla_hours if (obj.sla_hours and obj.sla_hours != 48) else None
+        if effective_hours is None:
+            if not obj.category or not hasattr(obj.category, 'sla_config'):
+                return format_html('<span style="color: gray;">No SLA</span>')
+            effective_hours = obj.category.sla_config.escalation_hours
+
         hours_elapsed = (timezone.now() - obj.created_at).total_seconds() / 3600
-        hours_until_escalation = sla.escalation_hours - hours_elapsed
+        hours_until_escalation = effective_hours - hours_elapsed
         
         if hours_until_escalation <= 0:
             # Exceeded deadline
@@ -442,7 +456,7 @@ class ComplaintLogAdmin(admin.ModelAdmin):
 @admin.register(AIVerificationLog)
 class AIVerificationLogAdmin(admin.ModelAdmin):
     """Read-only audit trail for every AI-assisted verification decision."""
-    list_display = ('id', 'complaint', 'result', 'image_path_snapshot', 'created_at')
+    list_display = ('id', 'complaint', 'result', 'ai_sla_hours', 'ai_priority', 'ai_emergency', 'image_path_snapshot', 'created_at')
     list_filter = ('result', 'created_at')
     search_fields = ('complaint__title', 'description_snapshot')
     readonly_fields = (

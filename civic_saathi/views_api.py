@@ -26,7 +26,7 @@ from .serializers import (
     WorkerSerializer, WorkerAttendanceSerializer, DepartmentAttendanceSerializer, OfficeSerializer
 )
 from .filter_system import ComplaintFilterSystem, ComplaintSortingSystem, ComplaintAssignmentSystem
-from .ai_filter import is_complaint_genuine  # Filter B: AI-assisted visual verification
+from .ai_filter import classify_complaint  # Filter B: AI-assisted visual verification + severity classification
 from .duplicate_detection import generate_smart_hash, generate_candidate_hashes, find_duplicate
 from .permissions import IsAdmin, IsSubAdmin, IsDepartmentAdmin, IsCitizen
 from .admin_auth import AdminTokenAuthentication
@@ -292,21 +292,21 @@ class ComplaintCreateView(generics.CreateAPIView):
             send_complaint_created_email(complaint)
             return
 
-        # ── Filter B: AI-assisted visual verification (Gemini Vision) ───────────
+        # ── Filter B: AI-assisted visual verification + severity classification (Gemini Vision) ───────────
         if complaint.image:
             image_path = complaint.image.path
             description = complaint.description
             ai_result = 'ERROR'
             error_detail = ''
+            ai_classification = None  # will hold {genuine, sla_hours, priority, emergency}
 
             try:
-                is_valid = is_complaint_genuine(image_path, description)
-                ai_result = 'YES' if is_valid else 'NO'
+                ai_classification = classify_complaint(image_path, description)
+                ai_result = ai_classification['genuine']  # 'YES' or 'NO'
             except Exception as exc:
                 # Fail-safe: do not block complaint; route to manual review
                 error_detail = str(exc)
                 ai_result = 'ERROR'
-                is_valid = None  # unknown
 
             # Log the AI decision for audit / transparency
             AIVerificationLog.objects.create(
@@ -315,6 +315,9 @@ class ComplaintCreateView(generics.CreateAPIView):
                 description_snapshot=description,
                 image_path_snapshot=image_path,
                 error_detail=error_detail,
+                ai_sla_hours=ai_classification['sla_hours'] if ai_classification else None,
+                ai_priority=ai_classification['priority'] if ai_classification else None,
+                ai_emergency=ai_classification.get('emergency', False) if ai_classification else False,
             )
 
             if ai_result == 'NO':
@@ -345,8 +348,16 @@ class ComplaintCreateView(generics.CreateAPIView):
                 send_complaint_created_email(complaint)
                 return
 
-            # ai_result == 'YES' → complaint is verified; continue pipeline
+            # ai_result == 'YES' → complaint is verified; apply AI classification
             complaint.is_genuine = True
+
+            if ai_classification:
+                complaint.sla_hours = ai_classification['sla_hours']
+                complaint.priority_level = ai_classification['priority']
+                complaint.is_emergency = ai_classification.get('emergency', False)
+                complaint.save(update_fields=[
+                    'is_genuine', 'sla_hours', 'priority_level', 'is_emergency', 'updated_at'
+                ])
 
         # ── Log: both filters cleared ────────────────────────────────────────────
         ComplaintLog.objects.create(

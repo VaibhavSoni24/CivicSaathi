@@ -244,9 +244,23 @@ class Complaint(models.Model):
 
     priority = models.PositiveSmallIntegerField(
         default=1,
-        help_text="1=Normal, Higher number = Higher priority (based on votes)"
+        help_text="1=Minimal, 2=Low, 3=Medium, 4=High, 5=Emergency (AI-determined + votes)"
     )
-    
+
+    # --- Dynamic SLA & Priority Intelligence (AI-Based) ---
+    sla_hours = models.PositiveIntegerField(
+        default=48,
+        help_text="AI-determined SLA hours based on severity (2-48h)"
+    )
+    priority_level = models.PositiveSmallIntegerField(
+        default=1,
+        help_text="AI-determined base priority: 1=Minimal, 2=Low, 3=Medium, 4=High, 5=Emergency"
+    )
+    is_emergency = models.BooleanField(
+        default=False,
+        help_text="AI flagged as emergency — immediate attention required"
+    )
+
     upvote_count = models.PositiveIntegerField(default=0)
 
     status = models.CharField(max_length=50, choices=STATUS_CHOICES, default="SUBMITTED")
@@ -298,8 +312,9 @@ class Complaint(models.Model):
     def save(self, *args, **kwargs):
         if self.category and not self.department:
             self.department = self.category.department
-        # Update priority based on votes
-        self.priority = 1 + (self.upvote_count // 10)  # Every 10 votes increases priority
+        # Effective priority = max(AI-determined base, vote-boosted value)
+        vote_priority = 1 + (self.upvote_count // 10)
+        self.priority = max(self.priority_level, vote_priority)
         # Auto-generate smart hash for duplicate detection if not already set
         if not self.smart_hash and self.title:
             from .duplicate_detection import generate_smart_hash
@@ -484,6 +499,19 @@ class AIVerificationLog(models.Model):
     error_detail = models.TextField(
         blank=True,
         help_text="Exception detail if AI call failed"
+    )
+    # Dynamic SLA & Priority Intelligence fields (stored for audit)
+    ai_sla_hours = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text="SLA hours recommended by AI"
+    )
+    ai_priority = models.PositiveSmallIntegerField(
+        null=True, blank=True,
+        help_text="Priority level recommended by AI (1-5)"
+    )
+    ai_emergency = models.BooleanField(
+        default=False,
+        help_text="AI flagged as emergency"
     )
     created_at = models.DateTimeField(auto_now_add=True)
 

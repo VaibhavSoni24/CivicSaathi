@@ -10,7 +10,7 @@ export default function WorkerNotificationBell() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [showPanel, setShowPanel] = useState(false);
   const [loading, setLoading] = useState(false);
-  const prevUnreadRef = useRef(0);
+  const seenIdsRef = useRef(null); // null on first load so we never beep for pre-existing notifications
   const audioRef = useRef(null);
   const panelRef = useRef(null);
 
@@ -27,15 +27,21 @@ export default function WorkerNotificationBell() {
       setNotifications(data);
       setUnreadCount(unread_count);
 
-      // Play beep if unread count increased (new notification arrived)
-      if (unread_count > prevUnreadRef.current && prevUnreadRef.current !== null) {
-        try {
-          audioRef.current?.play();
-        } catch (_) {
-          // Browser may block autoplay until user interaction
+      // Play beep exactly once per new ASSIGNMENT notification (i.e. complaint submitted & assigned).
+      // seenIdsRef is null on the very first fetch so we never beep for pre-existing notifications.
+      if (seenIdsRef.current !== null) {
+        const hasNewAssignment = data.some(
+          (n) => n.type === 'ASSIGNMENT' && !seenIdsRef.current.has(n.id)
+        );
+        if (hasNewAssignment) {
+          try {
+            audioRef.current?.play();
+          } catch (_) {
+            // Browser may block autoplay until user interaction
+          }
         }
       }
-      prevUnreadRef.current = unread_count;
+      seenIdsRef.current = new Set(data.map((n) => n.id));
     } catch (err) {
       console.error('Error fetching notifications:', err);
     }

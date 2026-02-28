@@ -66,17 +66,32 @@ export default function SLATimerCard({ complaint }) {
   // ─── Full card using sla_timer ────────────────────────────────────────────
   if (timer) {
     const c = palette[timer.status] || palette.ok;
-    const priorityColor = timer.priority === 3 ? '#dc2626' : timer.priority === 2 ? '#ea580c' : '#3b82f6';
+    const priorityColorMap = { 5: '#dc2626', 4: '#ea580c', 3: '#ca8a04', 2: '#16a34a', 1: '#6b7280' };
+    const priorityColor = priorityColorMap[timer.priority_level || timer.priority] || '#3b82f6';
 
     return (
       <div style={{
         marginBottom: '1.5rem',
         padding: '1.5rem',
         borderRadius: '14px',
-        border: `2px solid ${c.border}`,
-        boxShadow: `0 0 24px ${c.glow}`,
+        border: `2px solid ${timer.is_emergency ? '#dc2626' : c.border}`,
+        boxShadow: `0 0 24px ${timer.is_emergency ? 'rgba(220,38,38,0.25)' : c.glow}`,
         backgroundColor: 'var(--bg-secondary)',
       }}>
+        {/* Emergency banner */}
+        {timer.is_emergency && (
+          <div style={{
+            marginBottom: '1rem',
+            padding: '0.6rem 1rem',
+            background: 'linear-gradient(90deg, rgba(220,38,38,0.18) 0%, rgba(220,38,38,0.06) 100%)',
+            border: '1px solid rgba(220,38,38,0.35)',
+            borderRadius: '8px',
+            fontSize: '0.85rem', fontWeight: '800', color: '#dc2626',
+            letterSpacing: '0.5px', textAlign: 'center',
+          }}>
+            \uD83D\uDEA8 EMERGENCY \u2014 Immediate attention required \u2022 SLA: {timer.sla_hours || timer.escalation_deadline}h
+          </div>
+        )}
         {/* ── Header row ── */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: '0.875rem',
@@ -158,9 +173,11 @@ export default function SLATimerCard({ complaint }) {
 
             {/* 4. Escalation deadline (allotted escalation window) */}
             <StatBox
-              label="Escalation Window"
-              value={fmtHours(timer.escalation_deadline)}
-              sub="Hours before escalation"
+              label={timer.sla_hours && timer.sla_hours !== 48 ? "AI SLA Deadline" : "Escalation Window"}
+              value={fmtHours(timer.sla_hours || timer.escalation_deadline)}
+              sub={timer.sla_hours && timer.sla_hours !== 48 ? "AI-determined SLA" : "Hours before escalation"}
+              color={timer.is_emergency ? '#dc2626' : undefined}
+              highlight={timer.is_emergency ? '#dc2626' : undefined}
             />
           </div>
         )}

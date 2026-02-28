@@ -451,6 +451,36 @@ export default function ComplaintDetail() {
                   </div>
                 </div>
 
+                {/* AI Intelligence Card */}
+                <div style={{
+                  ...styles.card,
+                  ...(complaint.is_emergency ? { border: '1px solid rgba(220,38,38,0.4)', boxShadow: '0 0 16px rgba(220,38,38,0.1)' } : {}),
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                    <div style={{ ...styles.iconBadge, backgroundColor: complaint.is_emergency ? 'rgba(220,38,38,0.15)' : 'rgba(99,102,241,0.1)', color: complaint.is_emergency ? '#dc2626' : '#6366f1' }}>
+                      {complaint.is_emergency ? '\uD83D\uDEA8' : '\uD83E\uDDE0'}
+                    </div>
+                    <h3 style={styles.cardTitle}>AI Intelligence Classification</h3>
+                    {complaint.is_emergency && (
+                      <span style={{
+                        padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: '800',
+                        background: 'rgba(220,38,38,0.15)', color: '#dc2626', border: '1px solid rgba(220,38,38,0.35)',
+                        letterSpacing: '0.5px',
+                      }}>
+                        EMERGENCY
+                      </span>
+                    )}
+                  </div>
+                  <div style={styles.metaGrid}>
+                    <MetaItem icon="\u23F1\uFE0F" label="AI SLA" value={`${complaint.sla_hours || 48} hours`} />
+                    <MetaItem icon="\uD83D\uDD34" label="Priority Level" value={
+                      ({1: 'P1 \u2014 Minimal', 2: 'P2 \u2014 Low', 3: 'P3 \u2014 Medium', 4: 'P4 \u2014 High', 5: 'P5 \u2014 Emergency'})[complaint.priority_level || 1] || 'P1 \u2014 Minimal'
+                    } />
+                    <MetaItem icon="\uD83D\uDCC8" label="Effective Priority" value={`${complaint.priority || 1} (AI base + votes)`} />
+                    <MetaItem icon="\uD83D\uDEA8" label="Emergency" value={complaint.is_emergency ? 'Yes \u2014 Immediate attention required' : 'No'} />
+                  </div>
+                </div>
+
                 {/* Description Card */}
                 <div style={styles.card}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>

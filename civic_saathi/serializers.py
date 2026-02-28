@@ -141,14 +141,18 @@ class ComplaintSerializer(serializers.ModelSerializer):
     
     # SLA Timer fields
     sla_timer = serializers.SerializerMethodField()
-    
+
+    # Dynamic SLA & Priority Intelligence fields (read-only)
+    priority_level_display = serializers.SerializerMethodField()
+    emergency_badge = serializers.SerializerMethodField()
+
     class Meta:
         model = Complaint
         fields = '__all__'
         read_only_fields = ('user', 'status', 'current_worker', 'current_officer', 
                             'priority', 'upvote_count', 'filter_checked', 'filter_passed',
                             'sorted', 'assigned', 'is_deleted', 'is_spam', 'is_genuine', 'office',
-                            'smart_hash')
+                            'smart_hash', 'sla_hours', 'priority_level', 'is_emergency')
     
     def get_user_has_voted(self, obj):
         request = self.context.get('request')
@@ -161,14 +165,47 @@ class ComplaintSerializer(serializers.ModelSerializer):
             return f"{obj.current_worker.user.first_name} {obj.current_worker.user.last_name}"
         return None
     
+    def get_priority_level_display(self, obj):
+        labels = {1: 'Minimal', 2: 'Low', 3: 'Medium', 4: 'High', 5: 'Emergency'}
+        return labels.get(obj.priority_level, 'Normal')
+
+    def get_emergency_badge(self, obj):
+        if obj.is_emergency:
+            return {'label': 'EMERGENCY', 'icon': '🚨', 'color': '#dc2626'}
+        return None
+
     def get_sla_timer(self, obj):
         """Calculate SLA timer information for frontend display"""
         from django.utils import timezone
         
         if not obj.category or not hasattr(obj.category, 'sla_config'):
+            # Fallback: use AI-determined sla_hours if SLAConfig is absent
+            if obj.sla_hours and obj.sla_hours != 48:
+                from django.utils import timezone as tz_fb
+                h_elapsed = (tz_fb.now() - obj.created_at).total_seconds() / 3600
+                h_remaining = obj.sla_hours - h_elapsed
+                status_fb = 'overdue' if h_remaining <= 0 else ('critical' if h_remaining <= 2 else ('warning' if h_remaining <= 6 else 'ok'))
+                icon_fb = {'overdue': '⚠️', 'critical': '🔥', 'warning': '⏰', 'ok': '✓'}[status_fb]
+                priority_map_fb = {1: 'Minimal', 2: 'Low', 3: 'Medium', 4: 'High', 5: 'Emergency'}
+                return {
+                    'status': status_fb, 'icon': icon_fb, 'title': status_fb.upper(),
+                    'hours_elapsed': round(h_elapsed, 1),
+                    'hours_remaining': round(max(0, h_remaining), 1),
+                    'hours_overdue': round(max(0, -h_remaining), 1),
+                    'escalation_deadline': obj.sla_hours,
+                    'resolution_deadline': obj.sla_hours,
+                    'hours_until_resolution': round(h_remaining, 1),
+                    'is_overdue': h_remaining <= 0,
+                    'priority': obj.priority,
+                    'priority_text': priority_map_fb.get(obj.priority_level, 'Normal'),
+                    'priority_level': obj.priority_level,
+                    'is_emergency': obj.is_emergency,
+                    'sla_hours': obj.sla_hours,
+                    'escalation_count': obj.escalations.count(),
+                }
             return None
         
-        priority_map = {1: 'Normal', 2: 'High', 3: 'Critical'}
+        priority_map = {1: 'Minimal', 2: 'Low', 3: 'Medium', 4: 'High', 5: 'Emergency'}
         
         # If complaint is declined or rejected, show declined status with no timer
         if obj.status in ['DECLINED', 'REJECTED']:
@@ -184,7 +221,10 @@ class ComplaintSerializer(serializers.ModelSerializer):
                 'hours_until_resolution': 0,
                 'is_overdue': False,
                 'priority': obj.priority,
-                'priority_text': priority_map.get(obj.priority, 'Normal'),
+                'priority_text': priority_map.get(obj.priority_level, 'Normal'),
+                'priority_level': obj.priority_level,
+                'is_emergency': obj.is_emergency,
+                'sla_hours': obj.sla_hours,
                 'escalation_count': obj.escalations.count(),
             }
         
@@ -205,13 +245,18 @@ class ComplaintSerializer(serializers.ModelSerializer):
                 'hours_until_resolution': 0,
                 'is_overdue': False,
                 'priority': obj.priority,
-                'priority_text': priority_map.get(obj.priority, 'Normal'),
+                'priority_text': priority_map.get(obj.priority_level, 'Normal'),
+                'priority_level': obj.priority_level,
+                'is_emergency': obj.is_emergency,
+                'sla_hours': obj.sla_hours,
                 'escalation_count': obj.escalations.count(),
             }
         
         sla = obj.category.sla_config
+        # Use AI-determined SLA hours when available, otherwise fall back to category config
+        effective_sla_hours = obj.sla_hours if (obj.sla_hours and obj.sla_hours != 48) else sla.resolution_hours
         hours_elapsed = (timezone.now() - obj.created_at).total_seconds() / 3600
-        hours_until_escalation = sla.escalation_hours - hours_elapsed
+        hours_until_escalation = effective_sla_hours - hours_elapsed
         hours_until_resolution = sla.resolution_hours - hours_elapsed
         
         # For pending/submitted complaints (not assigned yet)
@@ -272,7 +317,7 @@ class ComplaintSerializer(serializers.ModelSerializer):
                 title = 'On Track'
         
         # Priority text
-        priority_map = {1: 'Normal', 2: 'High', 3: 'Critical'}
+        priority_map = {1: 'Minimal', 2: 'Low', 3: 'Medium', 4: 'High', 5: 'Emergency'}
         
         return {
             'status': status,
@@ -281,12 +326,15 @@ class ComplaintSerializer(serializers.ModelSerializer):
             'hours_elapsed': round(hours_elapsed, 1),
             'hours_remaining': round(max(0, hours_until_escalation), 1),
             'hours_overdue': round(max(0, -hours_until_escalation), 1),
-            'escalation_deadline': sla.escalation_hours,
+            'escalation_deadline': effective_sla_hours,
             'resolution_deadline': sla.resolution_hours,
             'hours_until_resolution': round(hours_until_resolution, 1),
             'is_overdue': hours_until_escalation <= 0,
             'priority': obj.priority,
-            'priority_text': priority_map.get(obj.priority, 'Normal'),
+            'priority_text': priority_map.get(obj.priority_level, 'Normal'),
+            'priority_level': obj.priority_level,
+            'is_emergency': obj.is_emergency,
+            'sla_hours': obj.sla_hours,
             'escalation_count': obj.escalations.count(),
         }
 

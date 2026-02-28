@@ -161,8 +161,33 @@ export default function ComplaintDetail() {
               )}
               <div style={styles.infoItem}>
                 <span style={styles.infoLabel}>Priority</span>
-                <span style={styles.infoValue}>{complaint.priority || 'Normal'}</span>
+                <span style={{
+                  ...styles.infoValue,
+                  color: (complaint.priority_level >= 4) ? '#dc2626' : (complaint.priority_level === 3 ? '#ca8a04' : 'inherit'),
+                  fontWeight: complaint.priority_level >= 4 ? '700' : '400',
+                }}>
+                  {({1:'P1 — Minimal', 2:'P2 — Low', 3:'P3 — Medium', 4:'P4 — High', 5:'P5 — Emergency'})[complaint.priority_level || 1] || 'P1 — Minimal'}
+                  {complaint.is_emergency && ' 🚨'}
+                </span>
               </div>
+              <div style={styles.infoItem}>
+                <span style={styles.infoLabel}>AI SLA</span>
+                <span style={styles.infoValue}>⏱️ {complaint.sla_hours || 48} hours</span>
+              </div>
+              {complaint.is_emergency && (
+                <div style={{
+                  ...styles.infoItem,
+                  gridColumn: '1 / -1',
+                  background: 'rgba(220,38,38,0.08)',
+                  border: '1px solid rgba(220,38,38,0.25)',
+                  borderRadius: '8px',
+                  padding: '12px',
+                }}>
+                  <span style={{ fontSize: '13px', fontWeight: '700', color: '#dc2626' }}>
+                    🚨 EMERGENCY — This complaint requires immediate attention. Shortest SLA applied.
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Completion Section */}

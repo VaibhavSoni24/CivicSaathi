@@ -147,7 +147,28 @@ export default function ComplaintDetail() {
           <div className="card" style={styles.headerCard}>
             <div style={styles.headerTop}>
               <h1 style={styles.title}>{complaint.title}</h1>
-              {getStatusBadge(complaint.status)}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                {getStatusBadge(complaint.status)}
+                {complaint.is_emergency && (
+                  <span style={{
+                    padding: '4px 12px', borderRadius: '14px', fontSize: '12px', fontWeight: '800',
+                    background: 'rgba(220,38,38,0.15)', color: '#dc2626', border: '1px solid rgba(220,38,38,0.3)',
+                    letterSpacing: '0.5px',
+                  }}>
+                    🚨 EMERGENCY
+                  </span>
+                )}
+                {complaint.priority_level > 1 && (
+                  <span style={{
+                    padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: '700',
+                    backgroundColor: complaint.priority_level >= 4 ? 'rgba(220,38,38,0.12)' : (complaint.priority_level === 3 ? 'rgba(202,138,4,0.12)' : 'rgba(22,163,74,0.1)'),
+                    color: complaint.priority_level >= 4 ? '#dc2626' : (complaint.priority_level === 3 ? '#ca8a04' : '#16a34a'),
+                    border: `1px solid ${complaint.priority_level >= 4 ? 'rgba(220,38,38,0.3)' : (complaint.priority_level === 3 ? 'rgba(202,138,4,0.3)' : 'rgba(22,163,74,0.3)')}`,
+                  }}>
+                    P{complaint.priority_level}
+                  </span>
+                )}
+              </div>
             </div>
 
             <div style={styles.metaRow}>

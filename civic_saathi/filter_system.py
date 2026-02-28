@@ -427,9 +427,11 @@ class WorkerAssignmentLayer:
         candidates = [w for w in active_workers if workload[w.id] == min_tasks]
         selected_worker = random.choice(candidates)
 
-        # ── Step 4: Resolve SLA deadline from category config ─────────────────
-        sla_hours = 48  # safe default when no SLAConfig exists
-        if complaint.category_id and complaint.category:
+        # ── Step 4: Resolve SLA deadline from AI classification → category config → default ───
+        # The AI-determined sla_hours (set in Filter B) takes precedence over
+        # the static SLAConfig value, which itself falls back to 48h.
+        sla_hours = complaint.sla_hours if complaint.sla_hours else 48
+        if sla_hours == 48 and complaint.category_id and complaint.category:
             try:
                 sla_hours = complaint.category.sla_config.resolution_hours
             except Exception:
@@ -478,14 +480,18 @@ class WorkerAssignmentLayer:
                 sla_deadline.strftime('%d %b %Y, %H:%M')
                 if sla_deadline else 'Not set'
             )
+            emergency_tag = '🚨 EMERGENCY: ' if complaint.is_emergency else ''
+            priority_labels = {1: 'Minimal', 2: 'Low', 3: 'Medium', 4: 'High', 5: 'Emergency'}
+            priority_label = priority_labels.get(complaint.priority_level, 'Normal')
             WorkerNotification.objects.create(
                 worker=selected_worker,
                 complaint=complaint,
                 notification_type='ASSIGNMENT',
-                title='New Complaint Assigned',
+                title=f'{emergency_tag}New Complaint Assigned',
                 message=(
                     f"Complaint \"{complaint.title}\" (#{complaint.id}) "
                     f"has been assigned to you. "
+                    f"Priority: {priority_label} | "
                     f"Location: {complaint.location}, {complaint.city}. "
                     f"SLA Deadline: {sla_str}."
                 ),

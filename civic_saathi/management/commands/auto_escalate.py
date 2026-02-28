@@ -42,12 +42,21 @@ class Command(BaseCommand):
         current_time = timezone.now()
         
         for complaint in active_complaints:
-            # Skip if no category or no SLA config
-            if not complaint.category or not hasattr(complaint.category, 'sla_config'):
-                continue
-            
-            sla_config = complaint.category.sla_config
-            escalation_deadline = complaint.created_at + timedelta(hours=sla_config.escalation_hours)
+            # Determine dynamic escalation deadline:
+            # 1. Use the complaint's AI-determined sla_hours if available.
+            # 2. Fall back to category SLAConfig.escalation_hours.
+            # 3. Skip if neither is set.
+            effective_sla_hours = None
+
+            if complaint.sla_hours and complaint.sla_hours != 48:
+                # AI-assigned dynamic SLA — derive escalation as 80 % of SLA
+                effective_sla_hours = max(1, int(complaint.sla_hours * 0.8))
+            elif complaint.category and hasattr(complaint.category, 'sla_config'):
+                effective_sla_hours = complaint.category.sla_config.escalation_hours
+            else:
+                continue  # nothing to escalate against
+
+            escalation_deadline = complaint.created_at + timedelta(hours=effective_sla_hours)
             warning_time = escalation_deadline - timedelta(hours=warning_threshold)
             
             hours_since_creation = (current_time - complaint.created_at).total_seconds() / 3600
@@ -58,7 +67,7 @@ class Command(BaseCommand):
                 self.stdout.write(
                     self.style.WARNING(
                         f'Complaint #{complaint.id} has exceeded SLA deadline '
-                        f'(created {hours_since_creation:.1f}h ago, deadline: {sla_config.escalation_hours}h)'
+                        f'(created {hours_since_creation:.1f}h ago, escalation deadline: {effective_sla_hours}h)'
                     )
                 )
                 
@@ -70,7 +79,8 @@ class Command(BaseCommand):
                         # Create escalation record
                         reason = (
                             f"Auto-escalation: SLA breach. Complaint not resolved within "
-                            f"{sla_config.escalation_hours} hours. "
+                            f"{effective_sla_hours} hours"
+                            f"{' (AI-classified EMERGENCY)' if complaint.is_emergency else ''}. "
                         )
                         
                         if complaint.current_worker:
