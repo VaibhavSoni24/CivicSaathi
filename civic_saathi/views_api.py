@@ -377,6 +377,11 @@ class ComplaintCreateView(generics.CreateAPIView):
         )
 
         # Log the sorting decision for full traceability.
+        # old_status='FILTERING' → new_status='SORTING' represents the department-routing
+        # step only. The subsequent SORTING → ASSIGNED (or PENDING) transition is already
+        # logged independently by WorkerAssignmentLayer.assign_worker(), so keeping these
+        # two statuses distinct prevents the "Being Sorted → Assigned" entry from
+        # appearing twice in the activity log.
         ComplaintLog.objects.create(
             complaint=complaint,
             action_by=self.request.user,
@@ -388,8 +393,8 @@ class ComplaintCreateView(generics.CreateAPIView):
                     f"Reason: {sorting_result['reason']}"
                 )
             ),
-            old_status='SORTING',
-            new_status=complaint.status,
+            old_status='FILTERING',
+            new_status='SORTING',
             new_dept=sorting_result.get('department'),
         )
 

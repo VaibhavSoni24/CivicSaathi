@@ -6,6 +6,37 @@ import { complaintAPI } from '../../utils/api';
 import Link from 'next/link';
 import SLATimerCard from '../../components/SLATimerCard';
 
+/**
+ * Deduplicates activity logs to prevent showing the same status transition
+ * twice in rapid succession (e.g. both the Sorting Layer and Assignment Layer
+ * creating a "Being Sorted → Assigned" entry within the same pipeline run).
+ *
+ * Rules:
+ *  - Input must already be in chronological order (oldest first).
+ *  - Two consecutive entries are considered duplicates when they share the
+ *    same `action` string AND their timestamps are within 60 seconds.
+ *  - When deduplicating, the entry with the longer `note` is kept (more info).
+ */
+function deduplicateActivityLogs(logs) {
+  if (!logs || logs.length === 0) return logs;
+  const result = [];
+  for (const log of logs) {
+    if (result.length > 0) {
+      const prev = result[result.length - 1];
+      const timeDiff = Math.abs(new Date(log.timestamp) - new Date(prev.timestamp)) / 1000;
+      if (log.action === prev.action && timeDiff <= 60) {
+        // Same transition within 60 s — keep whichever has the longer note
+        if ((log.note || '').length > (prev.note || '').length) {
+          result[result.length - 1] = log;
+        }
+        continue;
+      }
+    }
+    result.push(log);
+  }
+  return result;
+}
+
 export default function ComplaintDetail() {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -310,7 +341,7 @@ export default function ComplaintDetail() {
                       )}
                     </div>
                   </div>
-                  {[...logs].reverse().map((log, index) => (
+                  {deduplicateActivityLogs([...logs].reverse()).map((log, index) => (
                     <div key={index} style={styles.logItem}>
                       <div style={styles.logDot}></div>
                       <div style={styles.logContent}>

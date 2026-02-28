@@ -6,6 +6,37 @@ import AdminNavbar from '../../../components/AdminNavbar';
 import { adminComplaintAPI, adminWorkerAPI } from '../../../utils/adminApi';
 import SLATimerCard from '../../../components/SLATimerCard';
 
+/**
+ * Deduplicates activity logs to prevent showing the same status transition
+ * twice in rapid succession (e.g. both the Sorting Layer and Assignment Layer
+ * creating a "Being Sorted → Assigned" entry within the same pipeline run).
+ *
+ * Rules:
+ *  - Input must already be in chronological order (oldest first).
+ *  - Two consecutive entries are considered duplicates when they share the
+ *    same `action` string AND their timestamps are within 60 seconds.
+ *  - When deduplicating, the entry with the longer `note` is kept (more info).
+ */
+function deduplicateActivityLogs(logs) {
+  if (!logs || logs.length === 0) return logs;
+  const result = [];
+  for (const log of logs) {
+    if (result.length > 0) {
+      const prev = result[result.length - 1];
+      const timeDiff = Math.abs(new Date(log.timestamp) - new Date(prev.timestamp)) / 1000;
+      if (log.action === prev.action && timeDiff <= 60) {
+        // Same transition within 60 s — keep whichever has the longer note
+        if ((log.note || '').length > (prev.note || '').length) {
+          result[result.length - 1] = log;
+        }
+        continue;
+      }
+    }
+    result.push(log);
+  }
+  return result;
+}
+
 export default function ComplaintDetail() {
   const router = useRouter();
   const { id } = router.query;
@@ -600,47 +631,54 @@ export default function ComplaintDetail() {
 
                 {/* Activity Log */}
                 <div style={styles.card}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
-                    <div style={{ ...styles.iconBadge, backgroundColor: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' }}>📋</div>
-                    <h3 style={styles.cardTitle}>Activity Log</h3>
-                    <span style={styles.logCount}>{logs.length + 1} event{logs.length !== 0 ? 's' : ''}</span>
-                  </div>
-                  <div style={styles.logsList}>
-                    {/* Initial submission event */}
-                    <div style={styles.logItem}>
-                      <div style={styles.logDotFirst}></div>
-                      <div style={styles.logContent}>
-                        <p style={styles.logAction}>Complaint submitted</p>
-                        <p style={styles.logTime}>
-                          {new Date(complaint.created_at).toLocaleString('en-IN', {
-                            day: 'numeric', month: 'short', year: 'numeric',
-                            hour: '2-digit', minute: '2-digit'
-                          })}
-                        </p>
-                        {complaint.filter_reason && (
-                          <p style={styles.logNote}>{complaint.filter_reason}</p>
-                        )}
-                      </div>
-                    </div>
-                    {[...logs].reverse().map((log, index) => (
-                      <div key={index} style={styles.logItem}>
-                        <div style={styles.logDot}></div>
-                        <div style={styles.logContent}>
-                          <p style={styles.logAction}>{log.action}</p>
-                          <p style={styles.logTime}>
-                            {new Date(log.timestamp).toLocaleString('en-IN', {
-                              day: 'numeric', month: 'short', year: 'numeric',
-                              hour: '2-digit', minute: '2-digit'
-                            })}
-                          </p>
-                          {log.action_by_username && log.action_by_username !== 'System' && (
-                            <p style={styles.logBy}>by {log.action_by_username}</p>
-                          )}
-                          {log.note && <p style={styles.logNote}>{log.note}</p>}
+                  {(() => {
+                    const dedupedLogs = deduplicateActivityLogs([...logs].reverse());
+                    return (
+                      <>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+                          <div style={{ ...styles.iconBadge, backgroundColor: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' }}>📋</div>
+                          <h3 style={styles.cardTitle}>Activity Log</h3>
+                          <span style={styles.logCount}>{dedupedLogs.length + 1} event{dedupedLogs.length !== 0 ? 's' : ''}</span>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                        <div style={styles.logsList}>
+                          {/* Initial submission event */}
+                          <div style={styles.logItem}>
+                            <div style={styles.logDotFirst}></div>
+                            <div style={styles.logContent}>
+                              <p style={styles.logAction}>Complaint submitted</p>
+                              <p style={styles.logTime}>
+                                {new Date(complaint.created_at).toLocaleString('en-IN', {
+                                  day: 'numeric', month: 'short', year: 'numeric',
+                                  hour: '2-digit', minute: '2-digit'
+                                })}
+                              </p>
+                              {complaint.filter_reason && (
+                                <p style={styles.logNote}>{complaint.filter_reason}</p>
+                              )}
+                            </div>
+                          </div>
+                          {dedupedLogs.map((log, index) => (
+                            <div key={index} style={styles.logItem}>
+                              <div style={styles.logDot}></div>
+                              <div style={styles.logContent}>
+                                <p style={styles.logAction}>{log.action}</p>
+                                <p style={styles.logTime}>
+                                  {new Date(log.timestamp).toLocaleString('en-IN', {
+                                    day: 'numeric', month: 'short', year: 'numeric',
+                                    hour: '2-digit', minute: '2-digit'
+                                  })}
+                                </p>
+                                {log.action_by_username && log.action_by_username !== 'System' && (
+                                  <p style={styles.logBy}>by {log.action_by_username}</p>
+                                )}
+                                {log.note && <p style={styles.logNote}>{log.note}</p>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
